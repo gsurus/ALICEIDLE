@@ -5,8 +5,8 @@ using ALICEIDLE.Gelbooru;
 using System.Data;
 
 namespace ALICEIDLE.Services
-{
-    public class EmbedHandler
+{ 
+    public class EmbedHandler : Values
     {
         public static bool hasIterated { get; set; } = false;
         public static List<EmbedBuilder> waifuPages { get; set; }
@@ -17,6 +17,7 @@ namespace ALICEIDLE.Services
         public static OwnedWaifus wList { get; set; }
         private static Dictionary<ulong, PlayerData> playerDictionary = new Dictionary<ulong, PlayerData>();
         
+
         public static async Task<EmbedBuilder> GelEmbedBuilder(string user, string type)
         {
             EmbedBuilder emb = new EmbedBuilder();
@@ -77,35 +78,35 @@ namespace ALICEIDLE.Services
                 playerData = await SqlDBHandler.RetrievePlayerData(uid);
 
             EmbedBuilder emBuilder = new EmbedBuilder()
-                .WithTitle($"{username} [lvl {Values.CalculateLevel(playerData.Xp)}]");
+                .WithTitle($"{username} [lvl {CalculateLevel(playerData.Xp)}]");
 
             switch (GetCommandType(type))
             {
-                case CommandType.Catching:
+                case CmdType.Catching:
                     await ProcessCatching(emBuilder, playerData);
                     break;
 
-                case CommandType.Favorite:
-                case CommandType.HistFavorite:
+                case CmdType.Favorite:
+                case CmdType.HistFavorite:
                     await ProcessFavorite(emBuilder, playerData, name);
                     break;
 
-                case CommandType.Home:
+                case CmdType.Home:
                     await ProcessHome(emBuilder, playerData);
                     break;
 
-                case CommandType.Leaderboard:
+                case CmdType.Leaderboard:
                     await ProcessLeaderboard(emBuilder);
                     break;
 
-                case CommandType.Favorites:
-                case CommandType.Next:
-                case CommandType.Previous:
-                case CommandType.History:
-                case CommandType.HistNext:
-                case CommandType.HistPrevious:
-                case CommandType.Remove:
-                    wList.Waifus = await SqlDBHandler.QueryWaifuByIds(Values.FavoritesToIdList(playerData.OwnedWaifus), true);
+                case CmdType.Favorites:
+                case CmdType.Next:
+                case CmdType.Previous:
+                case CmdType.History:
+                case CmdType.HistNext:
+                case CmdType.HistPrevious:
+                case CmdType.Remove:
+                    wList.Waifus = await SqlDBHandler.QueryWaifuByIds(FavoritesToIdList(playerData.OwnedWaifus), true);
                     await ProcessWaifuIterator(emBuilder, playerData, wList, GetCommandType(type));
                     break;
             }
@@ -113,7 +114,7 @@ namespace ALICEIDLE.Services
         }
         public static async Task ProcessCatching(EmbedBuilder emBuilder, PlayerData playerData)
         {
-            var waifu = await Values.CatchWaifu(playerData);
+            var waifu = await CatchWaifu(playerData);
             if (waifu == null)
             {
                 return;
@@ -130,33 +131,33 @@ namespace ALICEIDLE.Services
 
         public static async Task ProcessFavorite(EmbedBuilder emBuilder, PlayerData playerData, string name)
         {
-            var _waifu = await Values.Favorite(playerData, name);
+            var _waifu = await Favorite(playerData, name);
             if (_waifu == null)
             {
                 emBuilder.AddField("Duplicate", $"{name} is already in your favorites", false)
-                         .WithColor(Values.errorColor);
+                         .WithColor(errorColor);
             }
             else
             {
                 emBuilder.AddField("Favorited", $"Added {name} to favorites", false)
-                         .WithColor(Values.successColor);
+                         .WithColor(successColor);
             }
         }
 
         public static async Task ProcessHome(EmbedBuilder emBuilder, PlayerData playerData)
         {
             emBuilder.WithColor(HomeColor)
-                     .AddField("Level", Values.CalculateLevel(playerData.Xp).ToString("N0"), true)
+                     .AddField("Level", CalculateLevel(playerData.Xp).ToString("N0"), true)
                      .AddField("Favorites", playerData.OwnedWaifus.Count().ToString("N0"), true)
                      .AddField("Rolled", playerData.TotalRolls.ToString("N0"), true)
-                     .AddField("XP", $"{playerData.Xp.ToString("N0")}/{Values.CalculateXPRequired(playerData.Xp).ToString("N0")}", true);
+                     .AddField("XP", $"{playerData.Xp.ToString("N0")}/{CalculateXPRequired(playerData.Xp).ToString("N0")}", true);
         }
 
 
         public static async Task ProcessLeaderboard(EmbedBuilder emBuilder)
         {
             string leaderboardPlayers = "";
-            var players = await Values.RetrieveAllPlayerData();
+            var players = await RetrieveAllPlayerData();
             int i = 1;
             foreach (var player in players)
             {
@@ -166,7 +167,7 @@ namespace ALICEIDLE.Services
             emBuilder.WithTitle("Leaderboard");
         }
 
-        public static async Task ProcessWaifuIterator(EmbedBuilder emBuilder, PlayerData playerData, OwnedWaifus wList, CommandType commandType)
+        public static async Task ProcessWaifuIterator(EmbedBuilder emBuilder, PlayerData playerData, OwnedWaifus wList, CmdType commandType)
         {
             wList.Waifus.Reverse();
             emBuilder = await WaifuIterator(wList, playerData, emBuilder, commandType.ToString().ToLowerInvariant());
@@ -176,39 +177,40 @@ namespace ALICEIDLE.Services
         {
             int waifuIndex = 0;
             int nextWaifu = 0;
-            Waifu waifu = await SqlDBHandler.QueryWaifuById(player.CurrentWaifu);
-            switch (arg)
+            Waifu waifu = await SqlDBHandler.QueryWaifuById(player.CurrentWaifu); 
+            waifuIndex = waifuList.Waifus.FindIndex(a => a.Name.Full == waifu.Name.Full);
+
+            switch (GetCommandType(arg))
             {
-                case "next":
-                    waifuIndex = waifuList.Waifus.FindIndex(a => a.Name.Full == waifu.Name.Full);
+                case CmdType.Next:
                     nextWaifu = waifuIndex + 1;
                     Console.WriteLine(waifu.Name.Full);
                     if (nextWaifu > waifuList.Waifus.Count() - 1)
                         nextWaifu = 0;
                     player.CurrentWaifu = waifuList.Waifus[nextWaifu].Id;
                     break;
-                case "previous":
-                    waifuIndex = waifuList.Waifus.FindIndex(a => a.Name.Full == waifu.Name.Full);
+                case CmdType.Previous:
                     nextWaifu = waifuIndex - 1;
                     if (nextWaifu < 0)
                         nextWaifu = waifuList.Waifus.Count() - 1;
                     player.CurrentWaifu = waifuList.Waifus[nextWaifu].Id;
                     break;
-                case "remove":
-                    waifuIndex = waifuList.Waifus.FindIndex(a => a.Name.Full == waifu.Name.Full);
+                case CmdType.Remove:
                     nextWaifu = waifuIndex - 1;
                     if (nextWaifu < 0)
                         nextWaifu = waifuList.Waifus.Count() - 1;
                     player.CurrentWaifu = waifuList.Waifus[nextWaifu].Id;
-                    await Values.RemoveWaifu(player, waifuList.Waifus[waifuIndex].Id);
+                    await RemoveWaifu(player, waifuList.Waifus[waifuIndex].Id);
                     break;
-                case "landing":
+                case CmdType.Landing:
                     player.CurrentWaifu = waifuList.Waifus.FirstOrDefault().Id;
                     waifuToDisplay = waifu;
                     break;
             }
+
             await SqlDBHandler.UpdatePlayerData(player);
             emb = await HistoryBuilder(emb, player, waifuList.Waifus, nextWaifu);
+
             return emb;
         }
         static async Task<EmbedBuilder> HistoryBuilder(EmbedBuilder emBuilder, PlayerData player, List<Waifu> waifus, int nextWaifu)
@@ -271,7 +273,7 @@ namespace ALICEIDLE.Services
             WaifuEmbedInfo embedInfo = new WaifuEmbedInfo
             {
                 ImageURL = waifu.ImageURL,
-                EmbedColor = Values.GetColorByRarity(waifu.Rarity),
+                EmbedColor = GetColorByRarity(waifu.Rarity),
                 PrimaryField = new EmbedFieldBuilder()
                     .WithName(waifu.Name.Full)
                     .WithValue($"{waifu.Rarity}\n{waifu.XpValue}xp\n")
@@ -331,7 +333,7 @@ namespace ALICEIDLE.Services
             }
 
             EmbedBuilder emb = new EmbedBuilder()
-                .WithImageUrl(waifu.ImageURL).WithColor(Values.GetColorByRarity(waifu.Rarity))
+                .WithImageUrl(waifu.ImageURL).WithColor(GetColorByRarity(waifu.Rarity))
                 .AddField("Name", waifu.Name.Full, true);
             if (waifu.Name.Alternative.Count() > 0)
                 emb.AddField("Alternative Names", nameInfo, true);
@@ -364,14 +366,14 @@ namespace ALICEIDLE.Services
             if (day > -1)
                 return $"🎂 {month}/{day}";
             else if (month > -1 && day == -1)
-                return $"🎂 {Values.GetMonthByInt(month.Value)}";
+                return $"🎂 {GetMonthByInt(month.Value)}";
             else
                 return "🎂 Unknown";
         }
 
 
 
-        public static CommandType GetCommandType(string type)
+        public static CmdType GetCommandType(string type)
         {
             if (string.IsNullOrEmpty(type))
             {
@@ -380,47 +382,62 @@ namespace ALICEIDLE.Services
             switch (type.ToLowerInvariant())
             {
                 case "catching":
-                    return CommandType.Catching;
+                    return CmdType.Catching;
 
                 case "favorite":
-                    return CommandType.Favorite;
+                    return CmdType.Favorite;
 
                 case "histfavorite":
-                    return CommandType.HistFavorite;
+                    return CmdType.HistFavorite;
 
                 case "home":
-                    return CommandType.Home;
+                    return CmdType.Home;
 
                 case "leaderboard":
-                    return CommandType.Leaderboard;
+                    return CmdType.Leaderboard;
 
                 case "favorites":
-                    return CommandType.Favorites;
+                    return CmdType.Favorites;
 
                 case "next":
-                    return CommandType.Next;
+                    return CmdType.Next;
 
                 case "previous":
-                    return CommandType.Previous;
+                    return CmdType.Previous;
 
                 case "history":
-                    return CommandType.History;
+                    return CmdType.History;
 
                 case "histnext":
-                    return CommandType.HistNext;
+                    return CmdType.HistNext;
 
                 case "histprevious":
-                    return CommandType.HistPrevious;
+                    return CmdType.HistPrevious;
 
                 case "remove":
-                    return CommandType.Remove;
+                    return CmdType.Remove;
+
+                case "upgrade":
+                    return CmdType.Upgrade;
+
+                case "landing":
+                    return CmdType.Landing;
+
+                case "gelbooru":
+                    return CmdType.Gelbooru;
+                    
+                case "gelNext":
+                    return CmdType.GelNext;
+                    
+                case "gelPrevious":
+                    return CmdType.GelPrevious;
 
                 default:
                     throw new ArgumentException($"Invalid command type: {type}", nameof(type));
             }
         }
 
-        public enum CommandType
+        public enum CmdType
         {
             Catching,
             Favorite,
@@ -433,26 +450,31 @@ namespace ALICEIDLE.Services
             History,
             HistNext,
             HistPrevious,
-            Remove
+            Remove,
+            Upgrade,
+            Landing,
+            Gelbooru,
+            GelNext,
+            GelPrevious
         }
 
     }
 
-    public class ButtonHandler
+    public class ButtonHandler : EmbedHandler
     {
         public static async Task MyButtonHandler(SocketMessageComponent component)
         {
             string id = component.Data.CustomId;
-            
+
             // We can now check for our custom id
-            switch (component.Data.CustomId)
+            switch (GetCommandType(component.Data.CustomId))
             {
-                case "catching":
+                case CmdType.Catching:
                     await component.RespondAsync(
-                        embed: EmbedHandler.BuildEmbed(id, component.User.Username, component.User.Id).Result.Build(), components: ComponentHandler.BuildComponent(id).Build());
+                        embed: BuildEmbed(id, component.User.Username, component.User.Id).Result.Build(), components: ComponentHandler.BuildComponent(id).Build());
                     break;
-                case "favorite":
-                case "histFavorite":
+                case CmdType.Favorite:
+                case CmdType.HistFavorite:
                     if (!component.Message.Embeds.First().Title.Contains(component.User.Username))
                     {
                         await component.RespondAsync(embed: new EmbedBuilder().WithDescription("You can't favorite someone else's waifu!").WithColor(Values.errorColor).Build(), ephemeral: true);
@@ -460,36 +482,36 @@ namespace ALICEIDLE.Services
                     }
                     string waifuName = component.Message.Embeds.FirstOrDefault().Fields.First().Name;
                     await component.RespondAsync(
-                        embed: EmbedHandler.BuildEmbed(id, component.User.Username, component.User.Id, waifuName).Result.Build(), components: ComponentHandler.BuildComponent(id).Build(), ephemeral: true);
+                        embed: BuildEmbed(id, component.User.Username, component.User.Id, waifuName).Result.Build(), components: ComponentHandler.BuildComponent(id).Build(), ephemeral: true);
                     break;
-                case "home":
+                case CmdType.Home:
                     await component.RespondAsync(
-                        embed: EmbedHandler.BuildEmbed(id, component.User.Username, component.User.Id).Result.Build(), components: ComponentHandler.BuildComponent(id).Build());
+                        embed: BuildEmbed(id, component.User.Username, component.User.Id).Result.Build(), components: ComponentHandler.BuildComponent(id).Build());
                     break;
-                case "favorites":
-                case "next":
-                case "previous":
-                case "history":
-                case "histNext":
-                case "histPrevious":
-                case "remove":
+                case CmdType.Favorites:
+                case CmdType.Next:
+                case CmdType.Previous:
+                case CmdType.History:
+                case CmdType.HistNext:
+                case CmdType.HistPrevious:
+                case CmdType.Remove:
                     await ButtonUpdateHelper(component, id);
                     break;
 
-                case "leaderboard":
+                case CmdType.Leaderboard:
                     await ButtonUpdateHelper(component, id);
                     break;
-                case "upgrade":
+                case CmdType.Upgrade:
                     await component.RespondAsync(
-                        embed: EmbedHandler.BuildEmbed(id, component.User.Username, component.User.Id).Result.Build(), components: ComponentHandler.BuildComponent(id).Build());
+                        embed: BuildEmbed(id, component.User.Username, component.User.Id).Result.Build(), components: ComponentHandler.BuildComponent(id).Build());
                     break;
-                case "gelbooru":
-                case "gelNext":
-                case "gelPrevious":
+                case CmdType.Gelbooru:
+                case CmdType.GelNext:
+                case CmdType.GelPrevious:
                     await component.UpdateAsync(
                         func: async (msg) =>
                         {
-                            msg.Embeds = new Optional<Embed[]>(new Embed[] { EmbedHandler.GelEmbedBuilder(component.User.Username, id).Result.Build() });
+                            msg.Embeds = new Optional<Embed[]>(new Embed[] { GelEmbedBuilder(component.User.Username, id).Result.Build() });
                             msg.Components = ComponentHandler.BuildComponent(id).Build();
                         });
                     break;
@@ -506,45 +528,45 @@ namespace ALICEIDLE.Services
         }
         
     }
-    public class ComponentHandler
+    public class ComponentHandler : EmbedHandler
     {
         public static ComponentBuilder BuildComponent(string type)
         {
             var comBuilder = new ComponentBuilder();
 
-            switch (type)
+            switch (GetCommandType(type))
             {
-                case "catching":
+                case CmdType.Catching:
                     AddButtons(comBuilder, ("Roll", "catching", ButtonStyle.Primary), ("Favorite", "favorite", ButtonStyle.Success), ("Return", "home", ButtonStyle.Secondary));
                     break;
 
-                case "home":
+                case CmdType.Home:
                     AddButtons(comBuilder, ("Roll", "catching", ButtonStyle.Primary), ("Favorites", "favorites", ButtonStyle.Success), ("History", "history", ButtonStyle.Secondary), ("Leaderboard", "leaderboard", ButtonStyle.Secondary));
                     break;
-                case "favorite":
-                case "histFavorite":
+                case CmdType.Favorite:
+                case CmdType.HistFavorite:
                     AddButtons(comBuilder, ("Roll", "catching", ButtonStyle.Primary), ("Home", "home", ButtonStyle.Secondary));
                     break;
-                case "favorites":
-                case "next":
-                case "previous":
-                case "remove":
+                case CmdType.Favorites:
+                case CmdType.Next:
+                case CmdType.Previous:
+                case CmdType.Remove:
                     AddButtons(comBuilder, ("Previous", "previous", ButtonStyle.Primary), ("Next", "next", ButtonStyle.Primary), ("Remove", "remove", ButtonStyle.Danger), ("Return", "home", ButtonStyle.Secondary));
                     break;
 
-                case "history":
-                case "histNext":
-                case "histPrevious":
+                case CmdType.History:
+                case CmdType.HistNext:
+                case CmdType.HistPrevious:
                     AddButtons(comBuilder, ("Previous", "histPrevious", ButtonStyle.Primary), ("Next", "histNext", ButtonStyle.Primary), ("Favorite", "histFavorite", ButtonStyle.Success), ("Return", "home", ButtonStyle.Secondary));
                     break;
 
-                case "leaderboard":
+                case CmdType.Leaderboard:
                     AddButtons(comBuilder, ("Return", "home"));
                     break;
 
-                case "gelbooru":
-                case "gelNext":
-                case "gelPrevious":
+                case CmdType.Gelbooru:
+                case CmdType.GelNext:
+                case CmdType.GelPrevious:
                     AddButtons(comBuilder, ("Previous", "gelPrevious", ButtonStyle.Primary), ("Next", "gelNext", ButtonStyle.Primary));
                     break;
                
