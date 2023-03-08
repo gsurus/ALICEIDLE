@@ -2,6 +2,7 @@
 using Discord.WebSocket;
 using ALICEIDLE.Logic;
 using ALICEIDLE.Gelbooru;
+using System.Data;
 
 namespace ALICEIDLE.Services
 {
@@ -14,7 +15,8 @@ namespace ALICEIDLE.Services
         public static Color HomeColor = new Color(23, 178, 255);
         public static UserData userData { get; set; }
         public static OwnedWaifus wList { get; set; }
-
+        private static Dictionary<ulong, PlayerData> playerDictionary = new Dictionary<ulong, PlayerData>();
+        
         public static async Task<EmbedBuilder> GelEmbedBuilder(string user, string type)
         {
             EmbedBuilder emb = new EmbedBuilder();
@@ -53,118 +55,124 @@ namespace ALICEIDLE.Services
         {
             PlayerData playerData = new PlayerData();
             OwnedWaifus wList = new OwnedWaifus();
-            bool playerExists = await SqlDBHandler.PlayerExists(uid);
-            if (!playerExists)
-            {
-                playerData = await SqlDBHandler.InsertPlayerData(username, uid);
-                playerList.Add(playerData);
+
+            if (playerDictionary.ContainsKey(uid))
+                playerData = playerDictionary[uid];
+            else
+            { // Check if the user exists in the database
+                bool playerExists = await SqlDBHandler.PlayerExists(uid);
+                if (!playerExists)
+                { // Insert player data into the database and add to player list
+                    playerData = await SqlDBHandler.InsertPlayerData(username, uid);
+                    playerList.Add(playerData);
+                }
+                else // Retrieve player data from the database
+                    playerData = await SqlDBHandler.RetrievePlayerData(uid);
+
+                // Add player data to the dictionary
+                playerDictionary.Add(uid, playerData);
             }
 
-            else
+            if (playerData == null)
                 playerData = await SqlDBHandler.RetrievePlayerData(uid);
-            if(playerData == null)
-                playerData = await SqlDBHandler.RetrievePlayerData(uid);
-
-            int waifuIndex = 0;
-            int nextWaifu = 0;
 
             EmbedBuilder emBuilder = new EmbedBuilder()
                 .WithTitle($"{username} [lvl {Values.CalculateLevel(playerData.Xp)}]");
 
-            switch (type)
+            switch (GetCommandType(type))
             {
-
-                case "catching":
-                    var waifu = await Values.CatchWaifu(playerData);
-                    if (waifu == null)
-                        break;
-
-                    WaifuEmbedInfo embedInfo = CreateEmbedContent(waifu);
-                    emBuilder.WithImageUrl(embedInfo.ImageURL).WithColor(embedInfo.EmbedColor)
-                        .AddField(embedInfo.PrimaryField)
-                        .AddField(embedInfo.InfoField)
-                        .AddField(embedInfo.LinkField)
-                        .WithFooter(new EmbedFooterBuilder().WithText($"{waifu.Series}"));
+                case CommandType.Catching:
+                    await ProcessCatching(emBuilder, playerData);
                     break;
 
-                case "favorite":
-                case "histFavorite":
-                    Waifu _waifu = await Values.Favorite(playerData, name);
-                    if (_waifu == null)
-                        emBuilder.AddField("Duplicate", $"{name} is already in your favorites", false).WithColor(Values.errorColor);
-                    else
-                        emBuilder.AddField("Favorited", $"Added {name} to favorites", false).WithColor(Values.successColor);
+                case CommandType.Favorite:
+                case CommandType.HistFavorite:
+                    await ProcessFavorite(emBuilder, playerData, name);
                     break;
-                case "home":
-                    emBuilder.WithColor(HomeColor)
-                        .AddField("Level", Values.CalculateLevel(playerData.Xp).ToString("N0"), true)
-                        .AddField("Favorites", playerData.OwnedWaifus.Count().ToString("N0"), true)
-                        .AddField("Rolled", playerData.TotalRolls.ToString("N0"), true)
-                        .AddField("XP", $"{playerData.Xp.ToString("N0")}/{Values.CalculateXPRequired(playerData.Xp).ToString("N0")}", true);
-                    break;
-                case "leaderboard":
-                    string leaderboardPlayers = "";
-                    var players = await Values.RetrieveAllPlayerData();
-                    int i = 1;
-                    foreach (var player in players)
-                    {
-                        emBuilder.AddField($"**{player.Name}**", $"Score: {player.Xp.ToString("N0")}\nRolls: {player.TotalRolls.ToString("N0")}");
-                        //leaderboardPlayers += $"**#{i}** {player.Name}\nScore: {player.Xp.ToString("N0")}\nTotal rolls: {player.TotalRolls.ToString("N0")}\n\n";
-                        i++;
-                    }
-                    emBuilder.WithTitle("Leaderboard");//.WithDescription(leaderboardPlayers);
 
+                case CommandType.Home:
+                    await ProcessHome(emBuilder, playerData);
                     break;
-                case "favorites":
+
+                case CommandType.Leaderboard:
+                    await ProcessLeaderboard(emBuilder);
+                    break;
+
+                case CommandType.Favorites:
+                case CommandType.Next:
+                case CommandType.Previous:
+                case CommandType.History:
+                case CommandType.HistNext:
+                case CommandType.HistPrevious:
+                case CommandType.Remove:
                     wList.Waifus = await SqlDBHandler.QueryWaifuByIds(Values.FavoritesToIdList(playerData.OwnedWaifus), true);
-                    emBuilder = await WaifuIterator(wList, playerData, emBuilder, "landing");
-                    break;
-                case "next":
-                    wList.Waifus = await SqlDBHandler.QueryWaifuByIds(Values.FavoritesToIdList(playerData.OwnedWaifus), true);
-                    emBuilder = await WaifuIterator(wList, playerData, emBuilder, "next");
-                    break;
-                case "previous":
-                    wList.Waifus = await SqlDBHandler.QueryWaifuByIds(Values.FavoritesToIdList(playerData.OwnedWaifus), true);
-                    emBuilder = await WaifuIterator(wList, playerData, emBuilder, "previous");
-                    break;
-                case "history":
-                    wList.Waifus = await SqlDBHandler.QueryWaifuByIds(playerData.RollHistory, true);
-                    wList.Waifus.Reverse();
-                    //Console.WriteLine($"rollhistory:{playerData.RollHistory[0]}|wList:{wList.Waifus[0].Id}");
-                    emBuilder = await WaifuIterator(wList, playerData, emBuilder, "landing");
-                    break;
-                case "histNext":
-                    wList.Waifus = await SqlDBHandler.QueryWaifuByIds(playerData.RollHistory, true);
-                    wList.Waifus.Reverse();
-                    emBuilder = await WaifuIterator(wList, playerData, emBuilder, "next");
-                    break;
-                case "histPrevious":
-                    wList.Waifus = await SqlDBHandler.QueryWaifuByIds(playerData.RollHistory, true);
-                    wList.Waifus.Reverse();
-                    emBuilder = await WaifuIterator(wList, playerData, emBuilder, "previous");
-                    break;
-                case "remove":
-                    wList.Waifus = await SqlDBHandler.QueryWaifuByIds(Values.FavoritesToIdList(playerData.OwnedWaifus), true);
-                    emBuilder = await WaifuIterator(wList, playerData, emBuilder, "remove");
+                    await ProcessWaifuIterator(emBuilder, playerData, wList, GetCommandType(type));
                     break;
             }
             return emBuilder;
         }
-
-        static async void WafaifuListCheck(PlayerData player, string btnType, string waifuType)
+        public static async Task ProcessCatching(EmbedBuilder emBuilder, PlayerData playerData)
         {
-            switch(waifuType)
+            var waifu = await Values.CatchWaifu(playerData);
+            if (waifu == null)
             {
-                case "favorites":
-                    if (wList.Waifus.Count > 0 && wList.Waifus.Count <= player.OwnedWaifus.Count())
-                        return;
-                    else
-                        wList.Waifus = await SqlDBHandler.QueryWaifuByIds(Values.FavoritesToIdList(player.OwnedWaifus));
-                    break;
+                return;
             }
-            return;
+
+            WaifuEmbedInfo embedInfo = CreateEmbedContent(waifu);
+            emBuilder.WithImageUrl(embedInfo.ImageURL)
+                     .WithColor(embedInfo.EmbedColor)
+                     .AddField(embedInfo.PrimaryField)
+                     .AddField(embedInfo.InfoField)
+                     .AddField(embedInfo.LinkField)
+                     .WithFooter(new EmbedFooterBuilder().WithText($"{waifu.Series}"));
         }
-        static async  Task<EmbedBuilder> WaifuIterator(OwnedWaifus waifuList, PlayerData player, EmbedBuilder emb, string arg)
+
+        public static async Task ProcessFavorite(EmbedBuilder emBuilder, PlayerData playerData, string name)
+        {
+            var _waifu = await Values.Favorite(playerData, name);
+            if (_waifu == null)
+            {
+                emBuilder.AddField("Duplicate", $"{name} is already in your favorites", false)
+                         .WithColor(Values.errorColor);
+            }
+            else
+            {
+                emBuilder.AddField("Favorited", $"Added {name} to favorites", false)
+                         .WithColor(Values.successColor);
+            }
+        }
+
+        public static async Task ProcessHome(EmbedBuilder emBuilder, PlayerData playerData)
+        {
+            emBuilder.WithColor(HomeColor)
+                     .AddField("Level", Values.CalculateLevel(playerData.Xp).ToString("N0"), true)
+                     .AddField("Favorites", playerData.OwnedWaifus.Count().ToString("N0"), true)
+                     .AddField("Rolled", playerData.TotalRolls.ToString("N0"), true)
+                     .AddField("XP", $"{playerData.Xp.ToString("N0")}/{Values.CalculateXPRequired(playerData.Xp).ToString("N0")}", true);
+        }
+
+
+        public static async Task ProcessLeaderboard(EmbedBuilder emBuilder)
+        {
+            string leaderboardPlayers = "";
+            var players = await Values.RetrieveAllPlayerData();
+            int i = 1;
+            foreach (var player in players)
+            {
+                emBuilder.AddField($"{player.Name}", $"Score: {player.Xp.ToString("N0")}\nRolls: {player.TotalRolls.ToString("N0")}");
+                i++;
+            }
+            emBuilder.WithTitle("Leaderboard");
+        }
+
+        public static async Task ProcessWaifuIterator(EmbedBuilder emBuilder, PlayerData playerData, OwnedWaifus wList, CommandType commandType)
+        {
+            wList.Waifus.Reverse();
+            emBuilder = await WaifuIterator(wList, playerData, emBuilder, commandType.ToString().ToLowerInvariant());
+        }
+
+        static async Task<EmbedBuilder> WaifuIterator(OwnedWaifus waifuList, PlayerData player, EmbedBuilder emb, string arg)
         {
             int waifuIndex = 0;
             int nextWaifu = 0;
@@ -192,7 +200,7 @@ namespace ALICEIDLE.Services
                     if (nextWaifu < 0)
                         nextWaifu = waifuList.Waifus.Count() - 1;
                     player.CurrentWaifu = waifuList.Waifus[nextWaifu].Id;
-                    Values.RemoveWaifu(player, waifuList.Waifus[waifuIndex].Id);
+                    await Values.RemoveWaifu(player, waifuList.Waifus[waifuIndex].Id);
                     break;
                 case "landing":
                     player.CurrentWaifu = waifuList.Waifus.FirstOrDefault().Id;
@@ -206,8 +214,7 @@ namespace ALICEIDLE.Services
         static async Task<EmbedBuilder> HistoryBuilder(EmbedBuilder emBuilder, PlayerData player, List<Waifu> waifus, int nextWaifu)
         {
             Waifu waifu = new Waifu();
-            string info = "";
-            if (player.CurrentWaifu == null)
+            if (player.CurrentWaifu > -1)
             {
                 emBuilder
                     .WithTitle("No Favorites")
@@ -323,7 +330,6 @@ namespace ALICEIDLE.Services
                     nameInfo += $"{name}, ";
             }
 
-            //nameInfo += $"\n\n**Native**\n{waifu.Name.Native}";
             EmbedBuilder emb = new EmbedBuilder()
                 .WithImageUrl(waifu.ImageURL).WithColor(Values.GetColorByRarity(waifu.Rarity))
                 .AddField("Name", waifu.Name.Full, true);
@@ -331,8 +337,6 @@ namespace ALICEIDLE.Services
                 emb.AddField("Alternative Names", nameInfo, true);
             if (waifu.Name.Native.Length > 0)
                 emb.AddField("Native Name", waifu.Name.Native, true);
-
-            //.AddField("Birthday & Gender", ageBDayGender, true)
             if (waifu.Age != null)
 
                 emb
@@ -364,6 +368,74 @@ namespace ALICEIDLE.Services
             else
                 return "🎂 Unknown";
         }
+
+
+
+        public static CommandType GetCommandType(string type)
+        {
+            if (string.IsNullOrEmpty(type))
+            {
+                throw new ArgumentException(nameof(type));
+            }
+            switch (type.ToLowerInvariant())
+            {
+                case "catching":
+                    return CommandType.Catching;
+
+                case "favorite":
+                    return CommandType.Favorite;
+
+                case "histfavorite":
+                    return CommandType.HistFavorite;
+
+                case "home":
+                    return CommandType.Home;
+
+                case "leaderboard":
+                    return CommandType.Leaderboard;
+
+                case "favorites":
+                    return CommandType.Favorites;
+
+                case "next":
+                    return CommandType.Next;
+
+                case "previous":
+                    return CommandType.Previous;
+
+                case "history":
+                    return CommandType.History;
+
+                case "histnext":
+                    return CommandType.HistNext;
+
+                case "histprevious":
+                    return CommandType.HistPrevious;
+
+                case "remove":
+                    return CommandType.Remove;
+
+                default:
+                    throw new ArgumentException($"Invalid command type: {type}", nameof(type));
+            }
+        }
+
+        public enum CommandType
+        {
+            Catching,
+            Favorite,
+            HistFavorite,
+            Home,
+            Leaderboard,
+            Favorites,
+            Next,
+            Previous,
+            History,
+            HistNext,
+            HistPrevious,
+            Remove
+        }
+
     }
 
     public class ButtonHandler
@@ -371,7 +443,6 @@ namespace ALICEIDLE.Services
         public static async Task MyButtonHandler(SocketMessageComponent component)
         {
             string id = component.Data.CustomId;
-            //var originalMsg = component.GetOriginalResponseAsync().Result;
             
             // We can now check for our custom id
             switch (component.Data.CustomId)
@@ -482,6 +553,7 @@ namespace ALICEIDLE.Services
             return comBuilder;
         }
 
+        
         private static void AddButtons(ComponentBuilder comBuilder, params (string label, string customId, ButtonStyle style)[] buttons)
         {
             foreach (var (label, customId, style) in buttons)
