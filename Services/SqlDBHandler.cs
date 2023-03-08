@@ -1,14 +1,7 @@
 ﻿using MySqlConnector;
 using Newtonsoft.Json;
-using MySqlConnector;
-using Org.BouncyCastle.Crypto;
 using System.Data;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using ALICEIDLE.Logic;
 using System.Text;
-using System.Reflection;
 
 namespace ALICEIDLE.Services
 {
@@ -63,18 +56,11 @@ namespace ALICEIDLE.Services
                     query += $"ORDER BY `Favorites` DESC LIMIT {randomValue}, 20;";
                     break;
             }
-            //Console.WriteLine(query);
-            //Console.WriteLine("Querying");
             
             List<Waifu> waifu = await GetWaifusFromQuery(query);
-            //Console.WriteLine(query);
-            //while (waifu.Count() <= 0)
-            //    waifu = await GetWaifusFromQuery(query);
             if (gender.ToLower() != "none")
                 return waifu.Find(c => c.Gender.ToLower() == gender.ToLower());
             else return waifu[0];
-            //Console.WriteLine(waifu.Count());
-
         }
         public static async Task<List<Waifu>> QueryWaifuByIds(List<int> ids, bool distinct = false)
         {
@@ -198,7 +184,7 @@ namespace ALICEIDLE.Services
                 insertQuery += "@" + i.ToString() + ",";
             }
             insertQuery = insertQuery.TrimEnd(',') + ")";
-            //Console.WriteLine(insertQuery);
+
             using (MySqlCommand command = new MySqlCommand(insertQuery, connection))
             {
                 PlayerData row = data;
@@ -281,7 +267,7 @@ namespace ALICEIDLE.Services
                 insertQuery += "@" + i.ToString() + ",";
             }
             insertQuery = insertQuery.TrimEnd(',') + ")";
-            //Console.WriteLine(insertQuery);
+
             using (MySqlCommand command = new MySqlCommand(insertQuery, connection))
             {
                 // Execute the insert query for each batch of rows
@@ -320,7 +306,7 @@ namespace ALICEIDLE.Services
                 insertQuery += "@" + i.ToString() + ",";
             }
             insertQuery = insertQuery.TrimEnd(',') + ")";
-            //Console.WriteLine(insertQuery);
+
             using (MySqlCommand command = new MySqlCommand(insertQuery, connection))
             {
                 // Execute the insert query for each batch of rows
@@ -329,7 +315,6 @@ namespace ALICEIDLE.Services
                     int batchEnd = Math.Min(batchStart + batchSize, data.Count);
                     for (int rowIndex = batchStart; rowIndex < batchEnd; rowIndex++)
                     {
-                        //Console.WriteLine($"{data[rowIndex].Name} | {data[rowIndex].Id}");
                         PlayerData row = data[rowIndex];
                         for (int i = 0; i < columns.Count; i++)
                         {
@@ -464,8 +449,6 @@ public static async Task<PlayerData> RetrievePlayerData(ulong id)
                 typeof(bool), typeof(string)
             };
 
-
-            //Console.WriteLine($"Field Names: {fieldNames.Count()}\nData Types: {dataTypes.Count()}");
             // Create a new table in the database using the extracted field names and data types
             using (connection = new MySqlConnection(connectionString))
             {
@@ -502,7 +485,7 @@ public static async Task<PlayerData> RetrievePlayerData(ulong id)
                     insertQuery += "@" + i.ToString() + ",";
                 }
                 insertQuery = insertQuery.TrimEnd(',') + ")";
-                //Console.WriteLine(insertQuery);
+                
                 using (MySqlCommand command = new MySqlCommand(insertQuery, connection))
                 {
                     // Execute the insert query for each batch of rows
@@ -524,8 +507,6 @@ public static async Task<PlayerData> RetrievePlayerData(ulong id)
                     }
                 }
             }
-
-            //Console.WriteLine("Done");
         }
         public static async Task RemoveFavoriteFromDatabase(ulong id, int favoriteId)
         {
@@ -580,7 +561,6 @@ public static async Task<PlayerData> RetrievePlayerData(ulong id)
                 case "TotalRolls": return row.TotalRolls;
                 
                 default:
-                    //Console.WriteLine($"Unknown field name: {fieldName}");
                     return null;
             }
         }
@@ -596,13 +576,6 @@ public static async Task<PlayerData> RetrievePlayerData(ulong id)
                 case "Rarity": return row.Rarity;
                 case "XpValue": return row.XpValue;
                 case "Favorites": return row.Favorites;
-                /*case "Id":
-                    // Retrieve the next value from a sequence or auto-increment field
-                    using (MySqlCommand cmd = new MySqlCommand("SELECT LAST_INSERT_ID()", Values.connection))
-                    {
-                        row.Id = Convert.ToInt32(cmd.ExecuteScalar());
-                        return row.Id;
-                    }*/
                 case "SeriesId": return row.SeriesId;
                 case "IsAdult": return row.IsAdult;
                 case "Name_Full": return row.Name.Full;
@@ -649,7 +622,6 @@ public static async Task<PlayerData> RetrievePlayerData(ulong id)
                         return null;
                     return row.Media?.nodes[0]?.Type;
                 default:
-                    //Console.WriteLine($"Unknown field name: {fieldName}");
                     return null;
             }
         }

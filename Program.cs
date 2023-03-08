@@ -4,9 +4,7 @@ using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ALICEIDLE.Services;
-using ALICEIDLE.Logic;
 using MySqlConnector;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace ALICEIDLE
 {
@@ -16,9 +14,7 @@ namespace ALICEIDLE
         public static IConfiguration _config { get; set; }
         private DiscordSocketClient _client;
         private InteractionService _commands;
-        private ulong _privGuildId;
-        private ulong _squadronGuildId;
-
+        public static ulong[] _serverIds = new ulong[] { 631818882901868574, 642655184152952833, 891524758263431188 };
 
         public static Task Main(string[] args) => new Program().MainAsync();
 
@@ -36,19 +32,13 @@ namespace ALICEIDLE
             
             // build the configuration and assign to _config          
             _config = _builder.Build();
-            _privGuildId = ulong.Parse(_config["PrivGuildId"]);
-            _squadronGuildId = ulong.Parse(_config["SquadronGuildId"]);
         }
 
         public async Task MainAsync()
         {
-            
-            //ALICEIDLE.Logic.Values.GenerateCharacterList();
             // call ConfigureServices to create the ServiceCollection/Provider for passing around the services
             using (var services = ConfigureServices())
             {
-                //EmbedHandler.userData = new ALICEIDLE.Gelbooru.UserData();
-                //EmbedHandler.userData.Users = new List<ALICEIDLE.Gelbooru.User>();
                 // get the client and assign to client 
                 // you get the services via GetRequiredService<T>
                 var client = services.GetRequiredService<DiscordSocketClient>();
@@ -90,13 +80,7 @@ namespace ALICEIDLE
         {
             if (IsDebug())
             {
-                // this is where you put the id of the test discord guild
-                Console.WriteLine($"In debug mode, adding commands to {_squadronGuildId}...");
-                Console.WriteLine($"In debug mode, adding commands to {_privGuildId}...");
-                await _commands.RegisterCommandsToGuildAsync(_squadronGuildId);
-                await _commands.RegisterCommandsToGuildAsync(_privGuildId);
-                await _commands.RegisterCommandsToGuildAsync(631818882901868574);
-
+                await AddCommandsToServers();
             }
             else
             {
@@ -104,13 +88,8 @@ namespace ALICEIDLE
                 await _commands.RegisterCommandsGloballyAsync(true);
             }
             Console.WriteLine($"Connected as -> [{_client.CurrentUser}] :)");
-            //Values.GenerateWaifuList();
             string connectionString = SqlDBHandler.connectionString;
             SqlDBHandler.connection = new MySqlConnection(connectionString);
-            
-            
-
-            //await Values.connection.OpenAsync();
         }
         private async Task GuildScheduledEventStartedAsync(SocketGuildEvent gEvent)
         {
@@ -137,6 +116,16 @@ namespace ALICEIDLE
             #else
             return false;
             #endif
+        }
+
+        private async Task AddCommandsToServers()
+        {
+            // this is where you put the id of the test discord guild
+            foreach (var id in _serverIds)
+            {
+                Console.WriteLine($"In debug mode, adding commands to {id}");
+                await _commands.RegisterCommandsToGuildAsync(id);
+            }
         }
     }
 }

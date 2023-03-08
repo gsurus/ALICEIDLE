@@ -1,17 +1,7 @@
 ﻿using Discord;
-using Discord.Interactions;
 using Discord.WebSocket;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Emit;
-using System.Text;
-using System.Threading.Tasks;
 using ALICEIDLE.Logic;
 using ALICEIDLE.Gelbooru;
-using static System.Net.Mime.MediaTypeNames;
-using System.Net.Http.Headers;
-using System.Numerics;
 
 namespace ALICEIDLE.Services
 {
@@ -69,23 +59,12 @@ namespace ALICEIDLE.Services
                 playerData = await SqlDBHandler.InsertPlayerData(username, uid);
                 playerList.Add(playerData);
             }
-            /*
-            if(playerList.Count() > 0)
-            {
-                foreach (var player in playerList)
-                {
-                    if (uid == player.Id)
-                        playerData = player;
-                }
-            }
-            */
+
             else
                 playerData = await SqlDBHandler.RetrievePlayerData(uid);
             if(playerData == null)
                 playerData = await SqlDBHandler.RetrievePlayerData(uid);
 
-            //var playerData = await Values.RetrievePlayerDataByID(uid, username);
-            //var waifuData = Values.RetrievePlayerDataList(uid, username).First();
             int waifuIndex = 0;
             int nextWaifu = 0;
 

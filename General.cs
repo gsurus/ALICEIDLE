@@ -3,23 +3,9 @@ using ALICEIDLE.Logic;
 using ALICEIDLE.Services;
 using Discord;
 using Discord.Interactions;
-using Discord.WebSocket;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using MySqlConnector;
-using MySqlX.XDevAPI;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using Reddit;
-using Reddit.Controllers;
-using Reddit.Things;
-using System.Collections.Specialized;
-using System.Net;
-using System.Security.Authentication;
-using System.Text;
 using System.Text.Json;
-
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace ALICEIDLE

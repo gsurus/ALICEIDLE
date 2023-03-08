@@ -2,7 +2,6 @@
 using Discord;
 using Newtonsoft.Json;
 using System.Text.Json;
-using MySqlConnector;
 using Microsoft.EntityFrameworkCore;
 using ALICEIDLE.Services;
 
@@ -38,13 +37,6 @@ namespace ALICEIDLE.Logic
             // Roll the gacha
             int rollResult = RollGacha(itemProbabilities, pityRateRolls, pityRateIncrease, player);
 
-            /*
-            while (selectedChr.Gender == null)
-            {
-                selectedChr = GetRandomWaifuByTier(rollResult, player);
-                //Console.WriteLine($"{selectedChr.Name.Full}: {selectedChr.Gender}");
-            }
-            */
             bool duplicate = false;
             var selectedChr = await GetRandomWaifuByTier(rollResult, player);
             //Console.WriteLine($"Selected Character: {selectedChr.Name.Full}");
@@ -56,18 +48,8 @@ namespace ALICEIDLE.Logic
                 selectedChr = await GetRandomWaifuByTier(rollResult, player);
                 duplicate = await IsDuplicateRoll(selectedChr, player.RollHistory.Take(20).ToList());
             }
-                /*
-                duplicate = await IsDuplicateRoll(selectedChr, IdListToWaifuList(player.OwnedWaifus), IdListToWaifuList(player.RollHistory));
-                while (duplicate)
-                {
-                    rollResult = RollGacha(itemProbabilities, pityRateRolls, pityRateIncrease, player);
-                    selectedChr = GetRandomWaifuByTier(rollResult, player);
-                    duplicate = await IsDuplicateRoll(selectedChr, IdListToWaifuList(player.OwnedWaifus), IdListToWaifuList(player.RollHistory));
-                }
-                */
-                //Console.WriteLine($"Selected character: {selectedChr.Name.Full} (Id = {selectedChr.Id})");
 
-                string rarity = CalculateRarity(selectedChr.Favorites);
+            string rarity = CalculateRarity(selectedChr.Favorites);
             int xpValue = CalculateXPValue(selectedChr.Favorites, rarity);
 
 
@@ -75,28 +57,17 @@ namespace ALICEIDLE.Logic
             player.Xp += xpValue;
             player.Level = CalculateLevel(player.Xp);
             player.LastCharacterRolled = selectedChr.Id;
-            //Console.WriteLine(player.RollHistory[0]);
             if (player.RollHistory.Count >= 100)
                 player.RollHistory.RemoveAt(0);
             player.RollHistory.Add(selectedChr.Id);
-            //Console.WriteLine(player.RollHistory[0]);
             player.TotalRolls++;
-
-            //Console.WriteLine(player.LastCharacterRolled);
-            //SqlDBHandler.PlayerExists(player.Id);
+            
             await SqlDBHandler.UpdatePlayerData(player);
-            //ModifyPlayerData(player);
 
             return selectedChr;
         }
         public static async Task<bool> IsDuplicateRoll(Waifu character, List<int> rollHistory)
         {
-            /*
-            if(favorites.Count > 0)
-                if (favorites.Any(c => c.Id== character.Id))
-                    return true;
-            */
-            //Console.WriteLine(rollHistory.Count());
             for (int i = 0; i < rollHistory.Count; ++i)
                 if (rollHistory[i] == character.Id)
                 {
@@ -115,18 +86,12 @@ namespace ALICEIDLE.Logic
         }
         public static async Task<List<Waifu>> IdListToWaifuList(List<int> ids)
         {
-            //Console.WriteLine(string.Join(",", ids));
             List<Waifu> waifus = new List<Waifu>();
             if (ids.Count <= 0)
                 return null;
             else
                 waifus = SqlDBHandler.QueryWaifuByIds(ids).Result;
-            /*
-            foreach (var id in ids)
-            {
-                waifus.Add(Values.GetCharacterByID(id));
-            }
-            */
+            
             return waifus;
         }
         public static async Task<Waifu> CharacterToWaifu(Character character)
@@ -160,7 +125,6 @@ namespace ALICEIDLE.Logic
         }
         public static async Task<Waifu> Favorite(PlayerData player, string name)
         {
-            //Waifu _waifu = CharacterToWaifu(GetCharacterByID(player.LastCharacterRolled));
             List<int> favoriteIds = FavoritesToIdList(player.OwnedWaifus);
 
             Waifu _waifu = SqlDBHandler.QueryWaifuByName(name).Result;
@@ -173,11 +137,8 @@ namespace ALICEIDLE.Logic
                 }
             }
             player.OwnedWaifus.Add(new Tuple<int, int>(_waifu.Id, 0));
-            foreach (var item in player.OwnedWaifus)
-            {
-                //Console.WriteLine(item.Item1);
-            }
             await SqlDBHandler.UpdatePlayerData(player);
+            
             return _waifu;
         }
         public static async Task RemoveWaifu(PlayerData player, int waifuId)
@@ -225,7 +186,7 @@ namespace ALICEIDLE.Logic
             {
                 Console.WriteLine(e);
             }
-            //Console.WriteLine($"{charMatch.Name.Full} | {id}\n");
+            
             return charMatch;
         }
         public static async Task<Waifu> GetCharacterByName(string searchName)
@@ -241,9 +202,9 @@ namespace ALICEIDLE.Logic
                 }
             }
                 
-            
             string closestMatch = FindClosestName(searchName, names, 6);
             Waifu charMatch = waifuList.FirstOrDefault(c => c.Name.Full.ToLower() == closestMatch.ToLower());
+            
             if (charMatch == null)
             {
                 foreach (var waifu in waifuList)
@@ -256,7 +217,7 @@ namespace ALICEIDLE.Logic
                 }
                 
             }
-            //Console.WriteLine($"{charMatch.Name.Full} | {searchName}\n");
+            
             return charMatch;
         }
         static async Task<Waifu> GetRandomWaifuByTier(int rarity, PlayerData player)
@@ -304,9 +265,6 @@ namespace ALICEIDLE.Logic
         {
             // Generate a random number between 0 and 1
             double roll = new Random().NextDouble();
-            //Console.WriteLine($"rolled: {roll}\n{itemProbabilities[0]}");
-
-            //Console.WriteLine(player.RollsSinceLastSSR);
             
             if (roll < itemProbabilities[3])
             {
@@ -326,7 +284,6 @@ namespace ALICEIDLE.Logic
                 for (int j = 3; j > itemProbabilities.Length - 4; j--)
                 {
                     itemProbabilities[j] += pityRateIncrease * (player.RollsSinceLastSSR * 0.01);
-                    //Console.WriteLine(itemProbabilities[j]);
                 }
                 Console.WriteLine($"Pity Rate: N {itemProbabilities[0].ToString("#.0000")} | R {itemProbabilities[1].ToString("#.0000")} | SR {itemProbabilities[2].ToString("#.0000")} | SSR {itemProbabilities[3].ToString("#.0000")}");
                 
@@ -352,7 +309,7 @@ namespace ALICEIDLE.Logic
                 storedPlayerData = await CreatePlayerData(playerData.Id, playerData.Name);
                 playerDataList.Add(storedPlayerData);
             }
-            //Console.WriteLine(playerData.OwnedWaifus.First().Id);
+
             storedPlayerData.Xp = playerData.Xp;
             storedPlayerData.Level = playerData.Level;
             storedPlayerData.WaifuAmount = playerData.WaifuAmount;
@@ -660,23 +617,6 @@ public class MyDbContext : DbContext
             entity.OwnsOne(e => e.Media, media =>
             {
                 media.Ignore(m => m.nodes);
-                /*
-                media.OwnsMany(n => n.nodes, node =>
-                {
-                    node.OwnsOne(t => t.Title, title =>
-                    {
-                        title.Property(t => t.UserPreferred).HasColumnName("Media_nodes_Title_UserPreferred");
-                        title.Property(t => t.English).HasColumnName("Media_nodes_Title_English");
-                        title.Property(t => t.Native).HasColumnName("Media_nodes_Title_Native");
-                        title.Property(t => t.Romaji).HasColumnName("Media_nodes_Title_Romanji");
-                    });
-                    node.Property(i => i.IsAdult).HasColumnName("Media_nodes_IsAdult");
-                    node.Property(i => i.Id).HasColumnName("Media_nodes_Id");
-                    node.Property(i => i.Type).HasColumnName("Media_nodes_Type");
-                    node.Property(i => i.Popularity).HasColumnName("Media_nodes_Popularity");
-                });
-                */
-
             });
 
             entity.Property(e => e.ImageURL).HasColumnName("ImageURL");
@@ -728,7 +668,6 @@ public class PlayerData
     public int LastCharacterRolled { get; set; }
     public int RollsSinceLastSSR { get; set; } = 0;
     public int CurrentWaifu { get; set; }
-    //public List<int> OwnedWaifus { get; set; }
     public List<Tuple<int, int>> OwnedWaifus { get; set; }
     public List<int> RollHistory { get; set; }
     public int TotalRolls { get; set; } = 0;
