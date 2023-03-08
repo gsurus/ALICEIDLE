@@ -7,7 +7,7 @@ using ALICEIDLE.Services;
 
 namespace ALICEIDLE.Logic
 {
-    public class Values
+    public class Values : SqlDBHandler
     {
         public static List<Character> characterList { get; set; }
         public static List<Waifu> waifuList { get; set; }
@@ -24,7 +24,6 @@ namespace ALICEIDLE.Logic
 
         public static async Task <Waifu> CatchWaifu(PlayerData player)
         {
-            //Console.WriteLine(player.OwnedWaifus[0].Item1);
             if (player.OwnedWaifus.Count > 1)
                 if(player.OwnedWaifus[0].Item1 == -1)
                     player.OwnedWaifus.RemoveAt(0);
@@ -39,7 +38,6 @@ namespace ALICEIDLE.Logic
 
             bool duplicate = false;
             var selectedChr = await GetRandomWaifuByTier(rollResult, player);
-            //Console.WriteLine($"Selected Character: {selectedChr.Name.Full}");
             duplicate = await IsDuplicateRoll(selectedChr, player.RollHistory);
             while (duplicate)
             {
@@ -62,7 +60,7 @@ namespace ALICEIDLE.Logic
             player.RollHistory.Add(selectedChr.Id);
             player.TotalRolls++;
             
-            await SqlDBHandler.UpdatePlayerData(player);
+            await UpdatePlayerData(player);
 
             return selectedChr;
         }
@@ -90,7 +88,7 @@ namespace ALICEIDLE.Logic
             if (ids.Count <= 0)
                 return null;
             else
-                waifus = SqlDBHandler.QueryWaifuByIds(ids).Result;
+                waifus = QueryWaifuByIds(ids).Result;
             
             return waifus;
         }
@@ -127,7 +125,7 @@ namespace ALICEIDLE.Logic
         {
             List<int> favoriteIds = FavoritesToIdList(player.OwnedWaifus);
 
-            Waifu _waifu = SqlDBHandler.QueryWaifuByName(name).Result;
+            Waifu _waifu = QueryWaifuByName(name).Result;
             if(player.OwnedWaifus.Count > 0)
             {
                 if (await IsDuplicateFavorite(await IdListToWaifuList(favoriteIds), _waifu))
@@ -137,7 +135,7 @@ namespace ALICEIDLE.Logic
                 }
             }
             player.OwnedWaifus.Add(new Tuple<int, int>(_waifu.Id, 0));
-            await SqlDBHandler.UpdatePlayerData(player);
+            await UpdatePlayerData(player);
             
             return _waifu;
         }
@@ -154,13 +152,13 @@ namespace ALICEIDLE.Logic
         public static async Task HistoryFavorite(PlayerData player)
         {
             List<int> favoriteIds = FavoritesToIdList(player.OwnedWaifus);
-            Waifu waifu = await SqlDBHandler.QueryWaifuById(player.CurrentWaifu);
+            Waifu waifu = await QueryWaifuById(player.CurrentWaifu);
             if (await IsDuplicateFavorite(await IdListToWaifuList(favoriteIds), waifu))
                 return;
             else
             {
                 player.OwnedWaifus.Add(new Tuple<int, int>(waifu.Id, 0));
-                await SqlDBHandler.UpdatePlayerData(player);
+                await UpdatePlayerData(player);
             }
 
         }
@@ -175,8 +173,6 @@ namespace ALICEIDLE.Logic
         }
         public static async Task<Waifu> GetCharacterByID(int id)
         {
-
-            //Console.WriteLine(waifuList.Count());
             Waifu charMatch = new Waifu();
             try
             {
@@ -222,7 +218,7 @@ namespace ALICEIDLE.Logic
         }
         static async Task<Waifu> GetRandomWaifuByTier(int rarity, PlayerData player)
         {
-            return SqlDBHandler.QueryWaifuByTier(rarity, player.GenderPreference).Result;
+            return QueryWaifuByTier(rarity, player.GenderPreference).Result;
         }
         static async Task<Waifu> GetRandomCharacterByTier(int rarity)
         {
@@ -450,61 +446,6 @@ namespace ALICEIDLE.Logic
             return favorites < 1129 ? "Normal" : favorites <= 2315 ? "Rare" : favorites < 8356 ? "Super Rare" : "Super Super Rare";
         }
 
-        static void WeightedList()
-        {
-            var _weights = new List<double>();
-            var _characterList = characterList.OrderBy(p => p.Favourites).Reverse().ToList();
-            int[] rankLimit = { 50, 250, 500, 1000 };
-            double[] rankWeight = { 0.005, 0.01, 0.05, 0.2 };
-            
-            Console.WriteLine($"{_characterList[50].Favourites}|{_characterList[250].Favourites}|{_characterList[500].Favourites}|{_characterList[1000].Favourites}");
-            
-            // assign weights to each character based on their popularity
-            for (int i = 0; i < _characterList.Count; i++)
-            {
-                int rank = i + 1;
-
-                for (int j = 0; j < rankLimit.Length; j++)
-                {
-                    if (rank <= rankLimit[j])
-                    {
-                        _weights.Add(rankWeight[j]);
-                        break;
-                    }
-                }
-            }
-
-            double totalWeight = _weights.Sum();
-            for (int i = 0; i < _weights.Count; i++)
-            {
-                _weights[i] = _weights[i] / totalWeight;
-            }
-
-            weightsGenerated = true;
-            weights = _weights;
-        }
-        static int WeightedRandom(List<double> weights, Random random)
-        {
-            // calculate the total weight
-            double totalWeight = weights.Sum();
-
-            // select a random number between 0 and the total weight
-            double randomValue = random.NextDouble() * totalWeight;
-
-            // find the index of the selected item based on the weights
-            for (int i = 0; i < weights.Count; i++)
-            {
-                if (randomValue < weights[i])
-                {
-                    return i;
-                }
-
-                randomValue -= weights[i];
-            }
-
-            // this should never happen, but just in case...
-            return weights.Count - 1;
-        }
         public static void GenerateWaifuList()
         {
             string content = File.ReadAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\waifus.json");

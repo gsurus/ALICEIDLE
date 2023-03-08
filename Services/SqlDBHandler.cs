@@ -5,7 +5,7 @@ using System.Text;
 
 namespace ALICEIDLE.Services
 {
-    public class SqlDBHandler
+    public class SqlDBHandler : SqlQueries
     {
 
         public static MySqlConnection connection { get; set; }
@@ -13,7 +13,7 @@ namespace ALICEIDLE.Services
         public static string connectionString = Program._config["SQLConnectionString"];
         public static async Task<object> GetRandomWaifuWithTopFavoritesAsync(string type)
         {
-            string query = $"{SqlQueries.selectFromOrderBy} `Favorites` DESC LIMIT 100;";
+            string query = $"{selectFromOrderBy} `Favorites` DESC LIMIT 100;";
 
             var response = await GetWaifusFromQuery(query);
             return response;
@@ -21,7 +21,7 @@ namespace ALICEIDLE.Services
         }
         public static async Task<Waifu> QueryWaifuByTier(int tier, string gender)
         {
-            string query = SqlQueries.selectFrom;
+            string query = selectFrom;
             Random rand = new Random();
             int max = 44696;
             int randomValue = 0;
@@ -65,23 +65,23 @@ namespace ALICEIDLE.Services
         public static async Task<List<Waifu>> QueryWaifuByIds(List<int> ids, bool distinct = false)
         {
             string _ids = string.Join(',', ids);
-            string query = $"{SqlQueries.selectFromWhere} `Id` IN ({_ids});";
+            string query = $"{selectFromWhere} `Id` IN ({_ids});";
             if (distinct)
-                query = $"{SqlQueries.selectDistinctFromWhere} `Id` IN ({_ids});";
+                query = $"{selectDistinctFromWhere} `Id` IN ({_ids});";
 
             List<Waifu> waifu = await GetWaifusFromQuery(query);
             return waifu;
         }
         public static async Task<Waifu> QueryWaifuById(int id)
         {
-            string query = $"{SqlQueries.selectFromWhere} `Id` = {id};";
+            string query = $"{selectFromWhere} `Id` = {id};";
 
             List<Waifu> waifu = await GetWaifusFromQuery(query);
             return waifu.FirstOrDefault();
         }
         public static async Task<Waifu> QueryWaifuByName(string name)
         {
-            string query = $"{SqlQueries.selectFromWhere} `Name_Full` = \"{name}\";";
+            string query = $"{selectFromWhere} `Name_Full` = \"{name}\";";
             List<Waifu> waifu = await GetWaifusFromQuery(query);
 
             return waifu.FirstOrDefault();

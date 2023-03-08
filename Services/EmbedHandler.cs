@@ -177,7 +177,7 @@ namespace ALICEIDLE.Services
         {
             int waifuIndex = 0;
             int nextWaifu = 0;
-            Waifu waifu = await SqlDBHandler.QueryWaifuById(player.CurrentWaifu); 
+            Waifu waifu = await QueryWaifuById(player.CurrentWaifu); 
             waifuIndex = waifuList.Waifus.FindIndex(a => a.Name.Full == waifu.Name.Full);
 
             switch (GetCommandType(arg))
@@ -208,7 +208,7 @@ namespace ALICEIDLE.Services
                     break;
             }
 
-            await SqlDBHandler.UpdatePlayerData(player);
+            await UpdatePlayerData(player);
             emb = await HistoryBuilder(emb, player, waifuList.Waifus, nextWaifu);
 
             return emb;
@@ -223,7 +223,7 @@ namespace ALICEIDLE.Services
                     .WithDescription("Add a favorite, and it'll be added to this page.");
                 return emBuilder;
             }
-            waifu = await SqlDBHandler.QueryWaifuById(player.CurrentWaifu);
+            waifu = await QueryWaifuById(player.CurrentWaifu);
             WaifuEmbedInfo embedInfo = CreateEmbedContent(waifu);
             emBuilder.WithImageUrl(embedInfo.ImageURL).WithColor(embedInfo.EmbedColor)
                 .AddField(embedInfo.PrimaryField)

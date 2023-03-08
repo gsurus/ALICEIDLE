@@ -33,15 +33,7 @@ namespace ALICEIDLE
                 waifu = await SqlDBHandler.QueryWaifuByName(name);
             else if (id != -1)
                 waifu = await SqlDBHandler.QueryWaifuById(id);
-            /*
-            WaifuEmbedInfo embedInfo = EmbedHandler.CreateEmbedContent(waifu);
-
-            EmbedBuilder emb = new EmbedBuilder().WithImageUrl(embedInfo.ImageURL).WithColor(embedInfo.EmbedColor)
-                .AddField(embedInfo.PrimaryField)
-                .AddField(embedInfo.InfoField)
-                .AddField(embedInfo.LinkField)
-                .WithFooter(new EmbedFooterBuilder().WithText($"{waifu.Series}"));
-            */
+            
             EmbedBuilder emb = EmbedHandler.CreateDetailedEmbedContent(waifu);
             await RespondAsync(embed: emb.Build());
         }
@@ -105,41 +97,7 @@ namespace ALICEIDLE
                 .AddField("API", $"{Context.Client.Latency}ms", true).Build();
 
             await RespondAsync(embed: emb, ephemeral: true);
-            
-            /*
-            var config = Program._config;
-            //string refreshToken = RedditToken.AuthorizeUser(config["Reddit_Client_Id"], config["Reddit_Client_Secret"]);
 
-            var r = new RedditClient(config["Reddit_Client_Id"], config["Reddit_Client_Secret"], config["Reddit_Refresh_Token"], config["Reddit_Access_Token"]);
-
-            // Display the name and cake day of the authenticated user.
-            Console.WriteLine("Cake Day: " + r.Models.Account.Me().Created.ToString("D"));
-            Subreddit subreddit = r.SearchSubreddits("ItemShop").First();
-            List<Reddit.Controllers.Post> postsList = new List<Reddit.Controllers.Post>();
-            List<RedditPostData> postDataList = new List<RedditPostData>();
-            var posts = subreddit.Posts.GetNew(limit: 100); // limit to 1000 posts at most
-
-            postsList.AddRange(posts);
-            for (int i = 0; i < 10; i++)
-            {
-
-                var _posts = subreddit.Posts.GetNew(limit: 100, after: posts.Last().Fullname);
-                posts = _posts;
-                postsList.AddRange(_posts);
-                Console.WriteLine(postsList.Count());
-            }
-            foreach (var post in postsList)
-            {
-                var postData = new RedditPostData();
-                postData.title = post.Title;
-                postData.imageURL = post.Listing.Preview.GetValue("images").First().First().First().First().ToString();
-                postDataList.Add(postData);
-            }
-            // limit to 1000 posts at most
-            var options = new JsonSerializerOptions { WriteIndented = true};
-            var jsonString = System.Text.Json.JsonSerializer.Serialize(postDataList, options);
-            File.WriteAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\items.json", jsonString);
-            */
         }
         [RequireOwner]
         [SlashCommand("buildlist", "testing")]
@@ -188,11 +146,8 @@ namespace ALICEIDLE
                 foreach (var character in aniListResponse.Data.Page.Characters)
                 {
                     _characters.Add(character);
-                    //Console.WriteLine(_characters.Count());
-                    //Console.WriteLine($"- {character.Name.Full} (Favorites: {character.Favourites})");
-                    //charList.Add($"{character.Name.Full}|{character.Favourites}|{character.Image.Large}");
                 }
-                //File.AppendAllLines(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\characters.txt", charList);
+                
                 Console.Write($"\r{_characters.Count()} characters added in {TimeElapsed(startTime)}");
                 if (i % 20 == 0)
                     Thread.Sleep(5000);
@@ -209,8 +164,6 @@ namespace ALICEIDLE
         [SlashCommand("buildwaifulist", "testing")]
         public async Task BuildWaifuList()
         {
-            //string fileContents = File.ReadAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\characters.json");
-
             // If the file is not empty, deserialize the contents of a list of PlayerData objects
             List<Waifu> waifus = new List<Waifu>();
 
@@ -268,16 +221,11 @@ namespace ALICEIDLE
             PlayerData data = await Values.RetrievePlayerDataByID(Context.User.Id, Context.User.Username);
             SqlDBHandler.InsertPlayerData(Context.User.Username, Context.User.Id);
             Console.WriteLine(data.Name);
-            //Waifu waifu = SqlDBHandler.GetRandomWaifuWithTopFavoritesAsync("test").Result;
-            //Console.WriteLine(waifu.Name.Full);
         }
         [RequireOwner]
         [SlashCommand("mariaupdate", "temp")]
         public async Task MariaUpdate()
         {
-            //PlayerData data = await Values.RetrievePlayerDataByID(Context.User.Id, Context.User.Username);
-            //await SqlDBHandler.UpdatePlayerData(data);
-
             PlayerData data = await SqlDBHandler.RetrievePlayerData(Context.User.Id);
             foreach (var id in data.RollHistory)
             {
