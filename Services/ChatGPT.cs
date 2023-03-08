@@ -24,28 +24,34 @@ namespace ALICEIDLE.Services
 
             var formData = new MultipartFormDataContent();
             formData.Add(new StringContent("whisper-1"), "model");
+
             var fileStreamContent = new StreamContent(File.OpenRead(filePath));
             fileStreamContent.Headers.ContentType = new MediaTypeHeaderValue("audio/mp3");
+
             formData.Add(fileStreamContent, "file", Path.GetFileName(filePath));
             formData.Add(new StringContent("response_format"), "verbose_json");
 
             HttpRequestMessage request = new HttpRequestMessage();
+
             if (isTranslation)
                 request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/audio/translations");
             else
                 request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/audio/transcriptions");
+
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", openaiApiKey);
             request.Content = formData;
 
             var response = await httpClient.SendAsync(request);
             var responseContent = await response.Content.ReadAsStringAsync();
             fileStreamContent.Dispose();
+
             Console.WriteLine(responseContent);
             WhisperResponse wResponse = JsonConvert.DeserializeObject<WhisperResponse>(responseContent);
             Console.WriteLine(wResponse.text);
 
             DirectoryInfo directoryInfo = new DirectoryInfo(tempDir);
             FileInfo[] files = directoryInfo.GetFiles();
+
             foreach (FileInfo _file in files)
             {
                 _file.Delete();
@@ -60,16 +66,20 @@ namespace ALICEIDLE.Services
 
             ongoingConvo[id] += $"USER: {query}\\n";
             Console.WriteLine(ongoingConvo[id]);
+
             string response = await QueryChatGPTApi(ongoingConvo[id]);
             ChatGPTRoot chatGPTResponse = JsonConvert.DeserializeObject<ChatGPTRoot>(response);
             ongoingConvo[id] += $"ChatGPT: {chatGPTResponse.choices.First().message.content}\\n";
+
             Console.WriteLine(ongoingConvo[id]);
             string finalResonse = chatGPTResponse.choices.First().message.content.Replace("ChatGPT: ", "");
+
             return finalResonse;
         }
         public static async Task<string> QueryChatGPTApi(string query)
         {
             HttpClient client = new HttpClient();
+
             var request = new HttpRequestMessage
             {
                 RequestUri = new Uri("https://api.openai.com/v1/chat/completions"),
@@ -94,10 +104,12 @@ namespace ALICEIDLE.Services
         {
             Console.WriteLine("downloading");
             using var httpClient = new HttpClient();
+
             using var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
             using var content = response.Content;
             using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
             await content.CopyToAsync(fileStream);
+
             content.Dispose();
             await fileStream.DisposeAsync();
         }

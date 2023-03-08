@@ -90,6 +90,7 @@ namespace ALICEIDLE.Services
         {
             connection = new MySqlConnection(connectionString); 
             await connection.OpenAsync();
+
             MySqlCommand command = new MySqlCommand(query, connection);
             MySqlDataReader reader = command.ExecuteReader();
 
@@ -203,12 +204,14 @@ namespace ALICEIDLE.Services
             string connectionString = Program._config["SQLConnectionString"];
             MySqlConnection connection = new MySqlConnection(connectionString);
             await connection.OpenAsync();
+
             var properties = typeof(PlayerData).GetProperties();
             var columns = properties.Select(p => new { Name = p.Name, DataType = GetSqlDataType(p.PropertyType) }).ToList();
 
             string tableName = "PlayerData";
             var updateQuery = new StringBuilder();
             updateQuery.Append("UPDATE ").Append(tableName).Append(" SET ");
+
             for (int i = 0; i < columns.Count; i++)
             {
                 var column = columns[i];
@@ -218,6 +221,7 @@ namespace ALICEIDLE.Services
                     updateQuery.Append(", ");
                 }
             }
+
             updateQuery.Append(" WHERE Id = @Id");
 
             using (MySqlCommand command = new MySqlCommand(updateQuery.ToString(), connection))
@@ -288,14 +292,17 @@ namespace ALICEIDLE.Services
             string connectionString = Program._config["SQLConnectionString"];
             MySqlConnection connection = new MySqlConnection(connectionString);
             await connection.OpenAsync();
+
             List<PlayerData> data = JsonConvert.DeserializeObject<List<PlayerData>>(File.ReadAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\waifu_data.json"));
             data = data.OrderByDescending(p => p.Id).ToList();
+
             int batchSize = 1000;
             var properties = typeof(PlayerData).GetProperties();
             var columns = properties.Select(p => new { Name = p.Name, DataType = GetSqlDataType(p.PropertyType) }).ToList();
 
             string tableName = "PlayerData";
             string insertQuery = "INSERT INTO " + tableName + " (";
+
             foreach (var column in columns)
             {
                 insertQuery += column.Name + ",";
@@ -452,12 +459,11 @@ public static async Task<PlayerData> RetrievePlayerData(ulong id)
             // Create a new table in the database using the extracted field names and data types
             using (connection = new MySqlConnection(connectionString))
             {
-                int batchSize = 1000;
-
-                
                 Console.WriteLine("Starting");
+                int batchSize = 1000;
                 string tableName = "mytable";
                 string createTableQuery = "CREATE TABLE " + tableName + " (";
+
                 for (int i = 0; i < fieldNames.Count; i++)
                 {
                     Console.WriteLine($"i: {i}");
@@ -467,7 +473,9 @@ public static async Task<PlayerData> RetrievePlayerData(ulong id)
                     createTableQuery += fieldName + " " + sqlDataType + ",";
 
                 }
+
                 createTableQuery = createTableQuery.TrimEnd(',') + ")";
+
                 using (MySqlCommand command = new MySqlCommand(createTableQuery, connection))
                 {
                     await command.ExecuteNonQueryAsync();
@@ -475,15 +483,19 @@ public static async Task<PlayerData> RetrievePlayerData(ulong id)
 
                 // Insert the data into the new table using a parameterized SQL query
                 string insertQuery = "INSERT INTO " + tableName + " (";
+
                 foreach (string fieldName in fieldNames)
                 {
                     insertQuery += fieldName + ",";
                 }
+
                 insertQuery = insertQuery.TrimEnd(',') + ") VALUES (";
+
                 for (int i = 0; i < fieldNames.Count; i++)
                 {
                     insertQuery += "@" + i.ToString() + ",";
                 }
+
                 insertQuery = insertQuery.TrimEnd(',') + ")";
                 
                 using (MySqlCommand command = new MySqlCommand(insertQuery, connection))

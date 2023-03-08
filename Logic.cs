@@ -27,6 +27,7 @@ namespace ALICEIDLE.Logic
             if (player.OwnedWaifus.Count > 1)
                 if(player.OwnedWaifus[0].Item1 == -1)
                     player.OwnedWaifus.RemoveAt(0);
+
             double[] itemProbabilities = { 1, 0.05, 0.025, 0.01 };
 
             // Pity rate settings
@@ -39,6 +40,7 @@ namespace ALICEIDLE.Logic
             bool duplicate = false;
             var selectedChr = await GetRandomWaifuByTier(rollResult, player);
             duplicate = await IsDuplicateRoll(selectedChr, player.RollHistory);
+
             while (duplicate)
             {
                 Console.WriteLine($"Rolled Duplicate: {selectedChr.Name.Full} (id){selectedChr.Id}");
@@ -50,7 +52,6 @@ namespace ALICEIDLE.Logic
             string rarity = CalculateRarity(selectedChr.Favorites);
             int xpValue = CalculateXPValue(selectedChr.Favorites, rarity);
 
-
             player.WaifuAmount++;
             player.Xp += xpValue;
             player.Level = CalculateLevel(player.Xp);
@@ -61,7 +62,6 @@ namespace ALICEIDLE.Logic
             player.TotalRolls++;
             
             await UpdatePlayerData(player);
-
             return selectedChr;
         }
         public static async Task<bool> IsDuplicateRoll(Waifu character, List<int> rollHistory)
@@ -72,6 +72,7 @@ namespace ALICEIDLE.Logic
                     Console.WriteLine("dupe");
                     return true;
                 } 
+
             return false;
         }
         public static async Task<bool> IsDuplicateFavorite(List<Waifu> favorites, Waifu waifu)
@@ -124,8 +125,8 @@ namespace ALICEIDLE.Logic
         public static async Task<Waifu> Favorite(PlayerData player, string name)
         {
             List<int> favoriteIds = FavoritesToIdList(player.OwnedWaifus);
-
             Waifu _waifu = QueryWaifuByName(name).Result;
+
             if(player.OwnedWaifus.Count > 0)
             {
                 if (await IsDuplicateFavorite(await IdListToWaifuList(favoriteIds), _waifu))
@@ -134,6 +135,7 @@ namespace ALICEIDLE.Logic
                     return null;
                 }
             }
+
             player.OwnedWaifus.Add(new Tuple<int, int>(_waifu.Id, 0));
             await UpdatePlayerData(player);
             
@@ -153,6 +155,7 @@ namespace ALICEIDLE.Logic
         {
             List<int> favoriteIds = FavoritesToIdList(player.OwnedWaifus);
             Waifu waifu = await QueryWaifuById(player.CurrentWaifu);
+
             if (await IsDuplicateFavorite(await IdListToWaifuList(favoriteIds), waifu))
                 return;
             else
@@ -165,6 +168,7 @@ namespace ALICEIDLE.Logic
         public static List<int> FavoritesToIdList(List<Tuple<int, int>> favorites)
         {
             List<int> ids = new List<int>();
+
             foreach (var favorite in favorites)
             {
                 ids.Add(favorite.Item1);
@@ -284,10 +288,8 @@ namespace ALICEIDLE.Logic
                 Console.WriteLine($"Pity Rate: N {itemProbabilities[0].ToString("#.0000")} | R {itemProbabilities[1].ToString("#.0000")} | SR {itemProbabilities[2].ToString("#.0000")} | SSR {itemProbabilities[3].ToString("#.0000")}");
                 
             }
-
-
             // No pity rate - loop through the item probabilities and determine which item was rolled
-            double cumulativeProbability = 0;
+
             player.RollsSinceLastSSR++;
             return roll < itemProbabilities[3] ? 3 : roll <= itemProbabilities[2] ? 2 : roll <= itemProbabilities[1] ? 1 : 0;
             
@@ -337,15 +339,16 @@ namespace ALICEIDLE.Logic
 
             // If the file is not empty, deserialize the contents of a list of PlayerData objects
             List<PlayerData> playerDataList = new List<PlayerData>();
+
             if (fileContents != "")
             {
                 playerDataList = JsonConvert.DeserializeObject<List<PlayerData>>(fileContents);
             }
+
             PlayerData playerData = playerDataList.Find(d => d.Id == id);
 
             if (playerData == null)
                 playerData = await CreatePlayerData(id, username);
-            
             
             return playerData;
 
@@ -363,10 +366,10 @@ namespace ALICEIDLE.Logic
 
             // If the file is not empty, deserialize the contents of a list of PlayerData objects
             List<PlayerData> waifuDataList = new List<PlayerData>();
+
             if (fileContents != "")
-            {
                 waifuDataList = JsonConvert.DeserializeObject<List<PlayerData>>(fileContents);
-            }
+
             return waifuDataList;
         }
         
@@ -380,15 +383,14 @@ namespace ALICEIDLE.Logic
                 OwnedWaifus = new List<Tuple<int, int>>(),
                 RollHistory = new List<int>()
             };
+
             playerData.OwnedWaifus.Add(new Tuple<int, int>(-1, 0));
             return playerData;
         }
         public static async Task<List<PlayerData>> RetrieveAllPlayerData()
         {
             if (!File.Exists("waifu_data.json"))
-            {
                 File.Create("waifu_data.json").Close();
-            }
 
             // Read the contents of the file
             string fileContents = File.ReadAllText("waifu_data.json");
@@ -396,15 +398,15 @@ namespace ALICEIDLE.Logic
             // If the file is not empty, deserialize the contents doubleo a list of PlayerData objects
             List<PlayerData> waifuDataList = new List<PlayerData>();
             if (fileContents != "")
-            {
                 waifuDataList = JsonConvert.DeserializeObject<List<PlayerData>>(fileContents);
-            }
+
             return waifuDataList.OrderBy(p => p.Xp).Reverse().ToList();
         }
 
         public static int CalculateXPValue(int favorites, string rarity)
         {
             int xp = Convert.ToInt32(favorites * 0.5);
+
             if (xp <= 9)
                 xp = 10;
             return xp;

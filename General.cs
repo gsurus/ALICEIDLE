@@ -219,7 +219,7 @@ namespace ALICEIDLE
         public async Task MarDB()
         {
             PlayerData data = await Values.RetrievePlayerDataByID(Context.User.Id, Context.User.Username);
-            SqlDBHandler.InsertPlayerData(Context.User.Username, Context.User.Id);
+            await SqlDBHandler.InsertPlayerData(Context.User.Username, Context.User.Id);
             Console.WriteLine(data.Name);
         }
         [RequireOwner]
@@ -302,6 +302,7 @@ namespace ALICEIDLE
         {
             string connectionString = Program._config["SQLConnectionString"];
             MySqlConnection connection = new MySqlConnection(connectionString);
+
             List<Waifu> data = JsonConvert.DeserializeObject<List<Waifu>>(File.ReadAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\waifus.json"));
             data = data.OrderByDescending(p => p.Favorites).ToList();
 
@@ -312,20 +313,23 @@ namespace ALICEIDLE
             // Create a new table in the database using the extracted field names and data types
             using (connection = new MySqlConnection(connectionString))
             {
-                int batchSize = 1000;
-
-                await connection.OpenAsync();
                 Console.WriteLine("Starting");
+
+                int batchSize = 1000;
+                await connection.OpenAsync();
                 string tableName = "mytable";
                 string createTableQuery = "CREATE TABLE " + tableName + " (";
+
                 for (int i = 0; i < columns.Count; i++)
                 {
                     Console.WriteLine($"i: {i}");
+
                     string columnName = columns[i].Name;
                     string sqlDataType = columns[i].DataType;
                     createTableQuery += columnName + " " + sqlDataType + ",";
 
                 }
+
                 createTableQuery = createTableQuery.TrimEnd(',') + ")";
                 using (MySqlCommand command = new MySqlCommand(createTableQuery, connection))
                 {
@@ -338,11 +342,13 @@ namespace ALICEIDLE
                 {
                     insertQuery += column.Name + ",";
                 }
+
                 insertQuery = insertQuery.TrimEnd(',') + ") VALUES (";
                 for (int i = 0; i < columns.Count; i++)
                 {
                     insertQuery += "@" + i.ToString() + ",";
                 }
+
                 insertQuery = insertQuery.TrimEnd(',') + ")";
                 Console.WriteLine(insertQuery);
                 using (MySqlCommand command = new MySqlCommand(insertQuery, connection))
@@ -408,6 +414,7 @@ namespace ALICEIDLE
         private static object GetFieldValue(Waifu row, string fieldName)
         {
             var property = typeof(Waifu).GetProperty(fieldName);
+
             if (property != null)
             {
                 return property.GetValue(row);
@@ -422,7 +429,6 @@ namespace ALICEIDLE
             DateTime endTime = DateTime.Now;
             TimeSpan elapsedTime = endTime - startTime;
 
-            
             return elapsedTime.ToString("mm':'ss");
         }
 
