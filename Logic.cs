@@ -7,19 +7,12 @@ using ALICEIDLE.Services;
 
 namespace ALICEIDLE.Logic
 {
-    public class Values : SqlDBHandler
+    public class WaifuHandler : SqlDBHandler
     {
         public static List<Character> characterList { get; set; }
         public static List<Waifu> waifuList { get; set; }
         public static List<double> weights { get; set; }
         public static bool weightsGenerated { get; set; } = false;
-
-        public static Color ssrColor = new Color(255, 66, 126);
-        public static Color srColor = new Color(233, 66, 255);
-        public static Color rColor = new Color(69, 66, 255);
-        public static Color nColor = new Color(158, 221, 255);
-        public static Color successColor = new Color(92, 184, 92);
-        public static Color errorColor = new Color(184, 92, 92);
        
 
         public static async Task <Waifu> CatchWaifu(PlayerData player)
@@ -246,19 +239,18 @@ namespace ALICEIDLE.Logic
             switch (rarity)
             {
                 case "Normal":
-                    return nColor;
-                    break;
+                    return EmbedColors.nColor;
+
                 case "Rare":
-                    return rColor;
-                    break;
+                    return EmbedColors.rColor;
+
                 case "Super Rare":
-                    return srColor;
-                    break;
+                    return EmbedColors.srColor;
+
                 case "Super Super Rare":
-                    return ssrColor;
-                    break;
+                    return EmbedColors.ssrColor;
             }
-            return ssrColor;
+            return EmbedColors.ssrColor;
         }
 
         static int RollGacha(double[] itemProbabilities, int pityRateRolls, double pityRateIncrease, PlayerData player)
@@ -518,6 +510,16 @@ namespace ALICEIDLE.Logic
         }
     }
 }
+public class Calculations
+{
+    public static string TimeElapsed(DateTime startTime)
+    {
+        DateTime endTime = DateTime.Now;
+        TimeSpan elapsedTime = endTime - startTime;
+
+        return elapsedTime.ToString("mm':'ss");
+    }
+}
 
 public class MyDbContext : DbContext
 {
@@ -578,61 +580,3 @@ public class MyDbContext : DbContext
         base.OnModelCreating(modelBuilder);
     }
 }
-
-public class WaifuRoot
-{
-    public List<Waifu> Waifus;
-}
-public class Waifu
-{
-    public Name Name { get; set; }
-    public string? Gender { get; set; }
-    public string? Age { get; set; }
-    public DateOfBirth DateOfBirth { get; set; }
-    public string? Series { get; set; }
-    public Media Media { get; set; }
-    public string? ImageURL { get; set; }
-    public string Rarity { get; set; }
-    public int XpValue { get; set; }
-    public int Favorites { get; set; }
-    public int Id { get; set; }
-    public int? SeriesId { get; set; }
-    public bool? IsAdult { get; set; }   
-}
-
-public class PlayerData
-{
-    public string Name { get; set; }
-    public ulong Id { get; set; }
-    public string GenderPreference { get; set; } = "none";
-    public int Level { get; set; } = 1;
-    public int Xp { get; set; } = 0;
-    public double WaifuAmount { get; set; } = 0;
-    public int LastCharacterRolled { get; set; }
-    public int RollsSinceLastSSR { get; set; } = 0;
-    public int CurrentWaifu { get; set; }
-    public List<Tuple<int, int>> OwnedWaifus { get; set; }
-    public List<int> RollHistory { get; set; }
-    public int TotalRolls { get; set; } = 0;
-}
-public class FavoriteData
-{
-    public int Id;
-    public int Level;
-}
-public class OwnedWaifus
-{
-    public List<Waifu> Waifus { get; set; }
-}
-
-public class WaifuEmbedInfo
-{
-    public string ImageURL { get; set; }
-    public Color EmbedColor { get; set; }
-    public EmbedFieldBuilder PrimaryField { get; set; }
-    public EmbedFieldBuilder InfoField { get; set; }
-    public EmbedFieldBuilder LinkField { get; set; }
-
-    public int Id { get; set; }
-}
-

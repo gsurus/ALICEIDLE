@@ -23,6 +23,7 @@ namespace ALICEIDLE
             var builder = ComponentHandler.BuildComponent("catching");
             await RespondAsync(embed: EmbedHandler.BuildEmbed("catching", Context.User.Username, Context.User.Id).Result.Build(), components: ComponentHandler.BuildComponent("catching").Build());
         }
+        
         [SlashCommand("search", "search for a character based on name or ID")]
         public async Task Search(string name = "", int id = -1)
         {
@@ -37,6 +38,7 @@ namespace ALICEIDLE
             EmbedBuilder emb = EmbedHandler.CreateDetailedEmbedContent(waifu);
             await RespondAsync(embed: emb.Build());
         }
+        
         [SlashCommand("gelbooru", "Search Gelbooru for an image")]
         public async Task Testing(string tag)
         {
@@ -79,6 +81,7 @@ namespace ALICEIDLE
             await SqlDBHandler.UpdatePlayerData(playerData);
             await RespondAsync("Preference Modified.", ephemeral: true);
         }
+        
         [SlashCommand("latency", "Get your latency")]
         public async Task Latency()
         {
@@ -99,6 +102,7 @@ namespace ALICEIDLE
             await RespondAsync(embed: emb, ephemeral: true);
 
         }
+        
         [RequireOwner]
         [SlashCommand("buildlist", "testing")]
         public async Task BuildList()
@@ -148,7 +152,7 @@ namespace ALICEIDLE
                     _characters.Add(character);
                 }
                 
-                Console.Write($"\r{_characters.Count()} characters added in {TimeElapsed(startTime)}");
+                Console.Write($"\r{_characters.Count()} characters added in {Calculations.TimeElapsed(startTime)}");
                 if (i % 20 == 0)
                     Thread.Sleep(5000);
                 else
@@ -160,6 +164,7 @@ namespace ALICEIDLE
 
             File.WriteAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\characters.json", jsonString);
         }
+        
         [RequireOwner]
         [SlashCommand("buildwaifulist", "testing")]
         public async Task BuildWaifuList()
@@ -167,7 +172,7 @@ namespace ALICEIDLE
             // If the file is not empty, deserialize the contents of a list of PlayerData objects
             List<Waifu> waifus = new List<Waifu>();
 
-            List<Character> characters = Values.characterList;
+            List<Character> characters = WaifuHandler.characterList;
             Console.WriteLine(characters.First().Name.Full);
 
             foreach (var character in characters)
@@ -193,8 +198,8 @@ namespace ALICEIDLE
                 }
                 waifu.Favorites = character.Favourites;
                 waifu.ImageURL = character.Image.Large;
-                waifu.Rarity = Values.CalculateRarity(character.Favourites);
-                waifu.XpValue = Values.CalculateXPValue(character.Favourites, Values.CalculateRarity(character.Favourites));
+                waifu.Rarity = WaifuHandler.CalculateRarity(character.Favourites);
+                waifu.XpValue = WaifuHandler.CalculateXPValue(character.Favourites, WaifuHandler.CalculateRarity(character.Favourites));
                 waifu.Id = character.Id;
                 
                 
@@ -214,14 +219,16 @@ namespace ALICEIDLE
             var jsonString = System.Text.Json.JsonSerializer.Serialize(waifus, options); 
             File.WriteAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\waifus.json", jsonString);
         }
+        
         [RequireOwner]
         [SlashCommand("mariadb", "temp")]
         public async Task MarDB()
         {
-            PlayerData data = await Values.RetrievePlayerDataByID(Context.User.Id, Context.User.Username);
+            PlayerData data = await WaifuHandler.RetrievePlayerDataByID(Context.User.Id, Context.User.Username);
             await SqlDBHandler.InsertPlayerData(Context.User.Username, Context.User.Id);
             Console.WriteLine(data.Name);
         }
+        
         [RequireOwner]
         [SlashCommand("mariaupdate", "temp")]
         public async Task MariaUpdate()
@@ -233,6 +240,7 @@ namespace ALICEIDLE
             }
            
         }
+        
         [SlashCommand("chatgpt", "Ask chatGPT something")]
         public async Task ChatGPTCommand(string message)
         {
@@ -244,10 +252,11 @@ namespace ALICEIDLE
             Embed emb = new EmbedBuilder()
                 .WithTitle($"{truncatedMsg}")
                 .WithDescription(gptResponse)
-                .WithColor(Values.successColor).Build();
+                .WithColor(EmbedColors.successColor).Build();
             await Context.Interaction.DeleteOriginalResponseAsync();
             await Context.Interaction.FollowupAsync(embed: emb);
         }
+        
         [SlashCommand("audio_transcription", "Create a transcription from an audio file.")]
         public async Task ChatGPTTranscription(IAttachment audioFile)
         {
@@ -257,10 +266,11 @@ namespace ALICEIDLE
             Embed emb = new EmbedBuilder()
             .WithTitle($"Transcription")
             .WithDescription(response)
-            .WithColor(Values.successColor).Build();
+            .WithColor(EmbedColors.successColor).Build();
             await Context.Interaction.DeleteOriginalResponseAsync();
             await Context.Interaction.FollowupAsync(embed: emb);
         }
+        
         [SlashCommand("audio_translation", "Create a translation from an audio file.")]
         public async Task ChatGPTTranslation(IAttachment audioFile)
         {
@@ -270,10 +280,11 @@ namespace ALICEIDLE
             Embed emb = new EmbedBuilder()
             .WithTitle($"Translation")
             .WithDescription(response)
-            .WithColor(Values.successColor).Build();
+            .WithColor(EmbedColors.successColor).Build();
             await Context.Interaction.DeleteOriginalResponseAsync();
             await Context.Interaction.FollowupAsync(embed: emb);
         }
+        
         [RequireOwner]
         [SlashCommand("mariainsert", "temp")]
         public async Task MariaInsert(IAttachment audioFile)
@@ -281,6 +292,7 @@ namespace ALICEIDLE
             var response = await ChatGPT.GetWhisperResponse(audioFile, true);
             Console.WriteLine(response);
         }
+        
         [RequireOwner]
         [SlashCommand("remove", "test")]
         public async Task Remove()
@@ -296,6 +308,7 @@ namespace ALICEIDLE
             var filteredMessages = botMessages.Where(x => (DateTimeOffset.UtcNow - x.Timestamp).TotalDays <= 14);
             await ((ITextChannel)Context.Channel).DeleteMessagesAsync(filteredMessages);
         }
+        
         [RequireOwner]
         [SlashCommand("query", "temp")]
         public async Task Query()
@@ -305,9 +318,9 @@ namespace ALICEIDLE
 
             List<Waifu> data = JsonConvert.DeserializeObject<List<Waifu>>(File.ReadAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\waifus.json"));
             data = data.OrderByDescending(p => p.Favorites).ToList();
-
+            
             var properties = typeof(Waifu).GetProperties();
-            var columns = properties.Select(p => new { Name = p.Name, DataType = GetSqlDataType(p.PropertyType) }).ToList();
+            var columns = properties.Select(p => new { Name = p.Name, DataType = SqlDBHandler.GetSqlDataType(p.PropertyType) }).ToList();
 
             Console.WriteLine($"Field Names: {columns.Count()}\nData Types: {columns.Count()}");
             // Create a new table in the database using the extracted field names and data types
@@ -375,62 +388,6 @@ namespace ALICEIDLE
 
             Console.WriteLine("Done");
         }
-        private static string GetSqlDataType(Type dataType)
-        {
-            if (dataType == typeof(int) || dataType == typeof(long))
-            {
-                return "BIGINT";
-            }
-            else if (dataType == typeof(float) || dataType == typeof(double))
-            {
-                return "FLOAT";
-            }
-            else if (dataType == typeof(decimal))
-            {
-                return "DECIMAL(18,4)";
-            }
-            else if (dataType == typeof(DateTime))
-            {
-                return "DATETIME";
-            }
-            else if (dataType == typeof(bool))
-            {
-                return "BIT";
-            }
-            else if (dataType == typeof(List<Tuple<int, int>>))
-            {
-                return "JSON"; // assuming the data will be stored as a string
-            }
-            else if (dataType == typeof(List<int>))
-            {
-                return "JSON";
-            }
-            else
-            {
-                return "VARCHAR(255)";
-            }
-        }
-        
-        private static object GetFieldValue(Waifu row, string fieldName)
-        {
-            var property = typeof(Waifu).GetProperty(fieldName);
-
-            if (property != null)
-            {
-                return property.GetValue(row);
-            }
-            else
-            {
-                return null;
-            }
-        }
-        public static string TimeElapsed(DateTime startTime)
-        {
-            DateTime endTime = DateTime.Now;
-            TimeSpan elapsedTime = endTime - startTime;
-
-            return elapsedTime.ToString("mm':'ss");
-        }
 
         public class CatchWaifusAutoCompleteHandler : AutocompleteHandler
         {
@@ -464,133 +421,4 @@ namespace ALICEIDLE
             }
         }
     }
-    public class AnilistQuery
-    {
-        public static string buildListSearchString = @"
-                query($perPage: Int, $page: Int) {
-                  Page(perPage: $perPage, page: $page) {
-                    characters(sort: FAVOURITES_DESC) {
-                      id
-                      name {
-                        full
-                        first
-                        middle
-                        last
-                        userPreferred
-                        alternative
-                        alternativeSpoiler
-                        native
-                      }
-                      gender
-                      age
-                      dateOfBirth {
-                        month
-                        day
-                        year
-                      }
-                      image {
-                        large
-                        medium
-                      }
-                      media(sort: FAVOURITES_DESC) {
-                        nodes {
-                          popularity
-                          title {
-                            userPreferred
-                            english
-                            romaji
-                            native
-                          }
-                          id
-                          isAdult
-                          type
-                        }
-                      }
-                      favourites
-                    }
-                  }
-                }
-            ";
-    }
-    public class RedditPostData
-    {
-        public string title { get; set; }
-        public string imageURL { get; set; }
-    }
-    
-    public class Character
-    {
-        public int Id { get; set; }
-        public Name Name { get; set; }
-        public string Gender { get; set; }
-        public string Age { get; set; }
-        public DateOfBirth DateOfBirth { get; set; }
-        public Image Image { get; set; }
-        public Media Media { get; set; }
-        public int Favourites { get; set; }
-    }
-
-    public class Data
-    {
-        public Page Page { get; set; }
-    }
-
-    public class DateOfBirth
-    {
-        public int? month { get; set; }
-        public int? day { get; set; }
-        public int? year { get; set; }
-    }
-
-    public class Image
-    {
-        public string Large { get; set; }
-        public string Medium { get; set; }
-    }
-
-    public class Media
-    {
-        public List<Node> nodes { get; set; }
-    }
-
-    public class Name
-    {
-        public string Full { get; set; }
-        public string First { get; set; }
-        public string Middle { get; set; }
-        public string Last { get; set; }
-        public string UserPreferred { get; set; }
-        public List<string> Alternative { get; set; }
-        public List<string> AlternativeSpoiler { get; set; }
-        public string Native { get; set; }
-    }
-
-    public class Node
-    {
-        public int? Popularity { get; set; }
-        public Title Title { get; set; }
-        public int? Id { get; set; }
-        public bool? IsAdult { get; set; }
-        public string Type { get; set; }
-    }
-
-    public class Page
-    {
-        public List<Character> Characters { get; set; }
-    }
-
-    public class Root
-    {
-        public Data Data { get; set; }
-    }
-
-    public class Title
-    {
-        public string UserPreferred { get; set; }
-        public string English { get; set; }
-        public string Romaji { get; set; }
-        public string Native { get; set; }
-    }
-
-
 }

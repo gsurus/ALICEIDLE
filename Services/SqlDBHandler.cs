@@ -520,6 +520,7 @@ public static async Task<PlayerData> RetrievePlayerData(ulong id)
                 }
             }
         }
+        
         public static async Task RemoveFavoriteFromDatabase(ulong id, int favoriteId)
         {
             using MySqlConnection connection = new MySqlConnection(connectionString);
@@ -528,7 +529,8 @@ public static async Task<PlayerData> RetrievePlayerData(ulong id)
             string query = $"UPDATE PlayerData SET OwnedWaifus = JSON_REMOVE(OwnedWaifus, REPLACE(JSON_SEARCH(OwnedWaifus, 'one', {favoriteId}), '\"', '')) WHERE Id = {id}";
             using MySqlCommand command = new MySqlCommand(query, connection);
         }
-        private static string GetSqlDataType(Type dataType)
+        
+        public static string GetSqlDataType(Type dataType)
         {
             if (dataType == typeof(int) || dataType == typeof(long))
             {
@@ -555,6 +557,7 @@ public static async Task<PlayerData> RetrievePlayerData(ulong id)
                 return "VARCHAR(255)";
             }
         }
+        
         private static object GetPlayerDataFieldValue(PlayerData row, string fieldName)
         {
             switch (fieldName)
@@ -637,12 +640,5 @@ public static async Task<PlayerData> RetrievePlayerData(ulong id)
                     return null;
             }
         }
-    }
-    public class SqlQueries
-    {
-        public static string selectFrom = "SELECT * FROM `aliceidle`.`mytable`";
-        public static string selectFromWhere = $"SELECT * FROM `aliceidle`.`mytable` WHERE";
-        public static string selectDistinctFromWhere = "SELECT * FROM `aliceidle`.`mytable` WHERE";
-        public static string selectFromOrderBy = "SELECT * FROM `aliceidle`.`mytable` ORDER BY";
     }
 }
