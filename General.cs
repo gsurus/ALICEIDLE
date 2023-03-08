@@ -1,0 +1,656 @@
+﻿using ALICEIDLE.Gelbooru;
+using ALICEIDLE.Logic;
+using ALICEIDLE.Services;
+using Discord;
+using Discord.Interactions;
+using Discord.WebSocket;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using MySqlConnector;
+using MySqlX.XDevAPI;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Reddit;
+using Reddit.Controllers;
+using Reddit.Things;
+using System.Collections.Specialized;
+using System.Net;
+using System.Security.Authentication;
+using System.Text;
+using System.Text.Json;
+
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+
+
+namespace ALICEIDLE
+{
+    public class General : InteractionModuleBase<SocketInteractionContext>
+    {
+        /*
+        [SlashCommand("__other_test__", "command_description")]
+        public async Task ExampleCommand([Summary("parameter_name"), Autocomplete(typeof(MyAutocompleteHandler))] string parameterWithAutocompletion)
+            => await RespondAsync($"Your choice: {parameterWithAutocompletion}");
+        */
+        [SlashCommand("roll", "Go out and catch some waifus")]
+        public async Task CatchWaifu()
+        {
+            var builder = ComponentHandler.BuildComponent("catching");
+            await RespondAsync(embed: EmbedHandler.BuildEmbed("catching", Context.User.Username, Context.User.Id).Result.Build(), components: ComponentHandler.BuildComponent("catching").Build());
+        }
+        [SlashCommand("search", "search for a character based on name or ID")]
+        public async Task Search(string name = "", int id = -1)
+        {
+            Waifu waifu = null;
+            if (name == "" & id == -1)
+                id = 1;
+            if (name != "")
+                waifu = await SqlDBHandler.QueryWaifuByName(name);
+            else if (id != -1)
+                waifu = await SqlDBHandler.QueryWaifuById(id);
+            /*
+            WaifuEmbedInfo embedInfo = EmbedHandler.CreateEmbedContent(waifu);
+
+            EmbedBuilder emb = new EmbedBuilder().WithImageUrl(embedInfo.ImageURL).WithColor(embedInfo.EmbedColor)
+                .AddField(embedInfo.PrimaryField)
+                .AddField(embedInfo.InfoField)
+                .AddField(embedInfo.LinkField)
+                .WithFooter(new EmbedFooterBuilder().WithText($"{waifu.Series}"));
+            */
+            EmbedBuilder emb = EmbedHandler.CreateDetailedEmbedContent(waifu);
+            await RespondAsync(embed: emb.Build());
+        }
+        [SlashCommand("gelbooru", "Search Gelbooru for an image")]
+        public async Task Testing(string tag)
+        {
+            Gelbooru.UserData userData = new Gelbooru.UserData()
+            {
+                Users = new List<Gelbooru.User>()
+            };
+            Gelbooru.User user = null;
+            if (EmbedHandler.userData == null)
+            {
+                user = new Gelbooru.User()
+                {
+                    Username = Context.User.Username,
+                    Posts = new Gelbooru.Root()
+                    {
+                        post = new List<Gelbooru.Post>(),
+                        attributes = new Attributes()
+                    },
+                    Page = 0
+                };
+                userData.Users.Add(user);
+                EmbedHandler.userData = userData;
+            }
+
+            user = EmbedHandler.userData.Users.Find(d => d.Username == Context.User.Username);
+            var channel = Context.Client.GetChannel(Context.Channel.Id) as ITextChannel;
+            if (!channel.IsNsfw)
+                tag = "rating:general " + tag;
+            Gelbooru.Root test = Gelbooru.Gelbooru.SearchPosts(tag).Result;
+            user.Posts = test;
+
+            await RespondAsync(embed: EmbedHandler.GelEmbedBuilder(Context.User.Username, "gelbooru").Result.Build(), components: ComponentHandler.BuildComponent("gelbooru").Build());
+        }
+
+        [SlashCommand("preference", "The gender of characters you'd prefer to roll")]
+        public async Task GenderPreference([Choice("Male", "male"), Choice("Female", "female"), Choice("None", "none")] string preference)
+        {
+            PlayerData playerData = await SqlDBHandler.RetrievePlayerData(Context.User.Id);
+            playerData.GenderPreference = preference;
+            await SqlDBHandler.UpdatePlayerData(playerData);
+            await RespondAsync("Preference Modified.", ephemeral: true);
+        }
+        [SlashCommand("latency", "Get your latency")]
+        public async Task Latency()
+        {
+            DateTime clientDT = Context.Interaction.CreatedAt.DateTime;
+            TimeSpan dtSecMs = clientDT.Subtract(DateTime.Now);
+            string latency = "";
+
+            if (dtSecMs.Seconds > 0)
+                latency = $"{dtSecMs.Seconds}.{dtSecMs.Milliseconds}";
+            else
+                latency = $"{dtSecMs.Milliseconds} ms";
+
+            Embed emb = new EmbedBuilder()
+                .WithTitle("Latency")
+                .AddField("Client", latency, true)
+                .AddField("API", $"{Context.Client.Latency}ms", true).Build();
+
+            await RespondAsync(embed: emb, ephemeral: true);
+            
+            /*
+            var config = Program._config;
+            //string refreshToken = RedditToken.AuthorizeUser(config["Reddit_Client_Id"], config["Reddit_Client_Secret"]);
+
+            var r = new RedditClient(config["Reddit_Client_Id"], config["Reddit_Client_Secret"], config["Reddit_Refresh_Token"], config["Reddit_Access_Token"]);
+
+            // Display the name and cake day of the authenticated user.
+            Console.WriteLine("Cake Day: " + r.Models.Account.Me().Created.ToString("D"));
+            Subreddit subreddit = r.SearchSubreddits("ItemShop").First();
+            List<Reddit.Controllers.Post> postsList = new List<Reddit.Controllers.Post>();
+            List<RedditPostData> postDataList = new List<RedditPostData>();
+            var posts = subreddit.Posts.GetNew(limit: 100); // limit to 1000 posts at most
+
+            postsList.AddRange(posts);
+            for (int i = 0; i < 10; i++)
+            {
+
+                var _posts = subreddit.Posts.GetNew(limit: 100, after: posts.Last().Fullname);
+                posts = _posts;
+                postsList.AddRange(_posts);
+                Console.WriteLine(postsList.Count());
+            }
+            foreach (var post in postsList)
+            {
+                var postData = new RedditPostData();
+                postData.title = post.Title;
+                postData.imageURL = post.Listing.Preview.GetValue("images").First().First().First().First().ToString();
+                postDataList.Add(postData);
+            }
+            // limit to 1000 posts at most
+            var options = new JsonSerializerOptions { WriteIndented = true};
+            var jsonString = System.Text.Json.JsonSerializer.Serialize(postDataList, options);
+            File.WriteAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\items.json", jsonString);
+            */
+        }
+        [RequireOwner]
+        [SlashCommand("buildlist", "testing")]
+        public async Task BuildList()
+        {
+            // AniList API v2 endpoint to query for characters
+            string apiUrl = "https://graphql.anilist.co";
+
+            // Query string to get characters sorted by number of favorites
+            string query = AnilistQuery.buildListSearchString;
+            Page page = new Page();
+            List<Character> _characters = new List<Character>();
+            DateTime startTime = DateTime.Now;
+            Console.WriteLine("");
+            for (int i = 1; i <= 1000; i++)
+            {
+                // Variables to pass to the query
+                var variables = new
+                {
+                    perPage = 50,
+                    page = i
+                };
+
+                // Create a new HttpClient instance
+                using var httpClient = new HttpClient();
+
+                // Create a new HttpRequestMessage with the query and variables
+                var httpRequestMessage = new HttpRequestMessage
+                {
+                    Method = HttpMethod.Post,
+                    RequestUri = new Uri(apiUrl),
+                    Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        query,
+                        variables
+                    }))
+                };
+                httpRequestMessage.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+
+                // Send the request and deserialize the response JSON into a list of AniListCharacter objects
+                var response = await httpClient.SendAsync(httpRequestMessage);
+                var content = await response.Content.ReadAsStringAsync();
+                Root aniListResponse = JsonConvert.DeserializeObject<Root>(content);
+
+                List<string> charList = new List<string>();
+                foreach (var character in aniListResponse.Data.Page.Characters)
+                {
+                    _characters.Add(character);
+                    //Console.WriteLine(_characters.Count());
+                    //Console.WriteLine($"- {character.Name.Full} (Favorites: {character.Favourites})");
+                    //charList.Add($"{character.Name.Full}|{character.Favourites}|{character.Image.Large}");
+                }
+                //File.AppendAllLines(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\characters.txt", charList);
+                Console.Write($"\r{_characters.Count()} characters added in {TimeElapsed(startTime)}");
+                if (i % 20 == 0)
+                    Thread.Sleep(5000);
+                else
+                    Thread.Sleep(100);
+            }
+            page.Characters = _characters;
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            var jsonString = System.Text.Json.JsonSerializer.Serialize(page, options);
+
+            File.WriteAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\characters.json", jsonString);
+        }
+        [RequireOwner]
+        [SlashCommand("buildwaifulist", "testing")]
+        public async Task BuildWaifuList()
+        {
+            //string fileContents = File.ReadAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\characters.json");
+
+            // If the file is not empty, deserialize the contents of a list of PlayerData objects
+            List<Waifu> waifus = new List<Waifu>();
+
+            List<Character> characters = Values.characterList;
+            Console.WriteLine(characters.First().Name.Full);
+
+            foreach (var character in characters)
+            {
+                var media = character.Media.nodes.FirstOrDefault();
+                
+                Waifu waifu = new Waifu();
+                waifu.Name = character.Name;
+                waifu.DateOfBirth = new DateOfBirth();
+                waifu.Gender = character.Gender;
+                waifu.Media = character.Media;
+                if (media == null)
+                {
+                    waifu.Series = null;
+                    waifu.SeriesId = null;
+                    waifu.IsAdult = null;
+                }
+                else
+                {
+                    waifu.Series = media.Title.UserPreferred;
+                    waifu.SeriesId = media.Id;
+                    waifu.IsAdult = media.IsAdult;
+                }
+                waifu.Favorites = character.Favourites;
+                waifu.ImageURL = character.Image.Large;
+                waifu.Rarity = Values.CalculateRarity(character.Favourites);
+                waifu.XpValue = Values.CalculateXPValue(character.Favourites, Values.CalculateRarity(character.Favourites));
+                waifu.Id = character.Id;
+                
+                
+                if (character.Gender == null)
+                    character.Gender = "unknown";
+                if (character.DateOfBirth.month != null)
+                    waifu.DateOfBirth.month = character.DateOfBirth.month;   
+                if (character.DateOfBirth.day != null)
+                    waifu.DateOfBirth.day = character.DateOfBirth.day;
+                if (character.Age != null)
+                    waifu.Age = character.Age;
+                waifus.Add(waifu);
+            }
+            
+            Console.WriteLine(waifus.Count());
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            var jsonString = System.Text.Json.JsonSerializer.Serialize(waifus, options); 
+            File.WriteAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\waifus.json", jsonString);
+        }
+        [RequireOwner]
+        [SlashCommand("mariadb", "temp")]
+        public async Task MarDB()
+        {
+            PlayerData data = await Values.RetrievePlayerDataByID(Context.User.Id, Context.User.Username);
+            SqlDBHandler.InsertPlayerData(Context.User.Username, Context.User.Id);
+            Console.WriteLine(data.Name);
+            //Waifu waifu = SqlDBHandler.GetRandomWaifuWithTopFavoritesAsync("test").Result;
+            //Console.WriteLine(waifu.Name.Full);
+        }
+        [RequireOwner]
+        [SlashCommand("mariaupdate", "temp")]
+        public async Task MariaUpdate()
+        {
+            //PlayerData data = await Values.RetrievePlayerDataByID(Context.User.Id, Context.User.Username);
+            //await SqlDBHandler.UpdatePlayerData(data);
+
+            PlayerData data = await SqlDBHandler.RetrievePlayerData(Context.User.Id);
+            foreach (var id in data.RollHistory)
+            {
+                Console.WriteLine(id);
+            }
+           
+        }
+        [SlashCommand("chatgpt", "Ask chatGPT something")]
+        public async Task ChatGPTCommand(string message)
+        {
+            await RespondAsync("Please wait...");
+            var gptResponse = await ChatGPT.GetChatGPTResponse(message, Context.User.Id);
+            string truncatedMsg = message;
+            if (message.Length > 60)
+                truncatedMsg = message.Substring(0, Math.Min(message.Length, 60));
+            Embed emb = new EmbedBuilder()
+                .WithTitle($"{truncatedMsg}")
+                .WithDescription(gptResponse)
+                .WithColor(Values.successColor).Build();
+            await Context.Interaction.DeleteOriginalResponseAsync();
+            await Context.Interaction.FollowupAsync(embed: emb);
+        }
+        [SlashCommand("audio_transcription", "Create a transcription from an audio file.")]
+        public async Task ChatGPTTranscription(IAttachment audioFile)
+        {
+            await RespondAsync("Please wait...");
+            var response = await ChatGPT.GetWhisperResponse(audioFile, false);
+
+            Embed emb = new EmbedBuilder()
+            .WithTitle($"Transcription")
+            .WithDescription(response)
+            .WithColor(Values.successColor).Build();
+            await Context.Interaction.DeleteOriginalResponseAsync();
+            await Context.Interaction.FollowupAsync(embed: emb);
+        }
+        [SlashCommand("audio_translation", "Create a translation from an audio file.")]
+        public async Task ChatGPTTranslation(IAttachment audioFile)
+        {
+            await RespondAsync("Please wait...");
+            var response = await ChatGPT.GetWhisperResponse(audioFile, true);
+
+            Embed emb = new EmbedBuilder()
+            .WithTitle($"Translation")
+            .WithDescription(response)
+            .WithColor(Values.successColor).Build();
+            await Context.Interaction.DeleteOriginalResponseAsync();
+            await Context.Interaction.FollowupAsync(embed: emb);
+        }
+        [RequireOwner]
+        [SlashCommand("mariainsert", "temp")]
+        public async Task MariaInsert(IAttachment audioFile)
+        {
+            var response = await ChatGPT.GetWhisperResponse(audioFile, true);
+            Console.WriteLine(response);
+        }
+        [RequireOwner]
+        [SlashCommand("remove", "test")]
+        public async Task Remove()
+        {
+            IEnumerable<IMessage> messages = await Context.Channel.GetMessagesAsync(50).FlattenAsync();
+            List<IMessage> botMessages = new List<IMessage>();
+            foreach (var message in messages)
+            {
+                
+                if(message.Author.IsBot)
+                    botMessages.Add(message);
+            }
+            var filteredMessages = botMessages.Where(x => (DateTimeOffset.UtcNow - x.Timestamp).TotalDays <= 14);
+            await ((ITextChannel)Context.Channel).DeleteMessagesAsync(filteredMessages);
+        }
+        [RequireOwner]
+        [SlashCommand("query", "temp")]
+        public async Task Query()
+        {
+            string connectionString = Program._config["SQLConnectionString"];
+            MySqlConnection connection = new MySqlConnection(connectionString);
+            List<Waifu> data = JsonConvert.DeserializeObject<List<Waifu>>(File.ReadAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\waifus.json"));
+            data = data.OrderByDescending(p => p.Favorites).ToList();
+
+            var properties = typeof(Waifu).GetProperties();
+            var columns = properties.Select(p => new { Name = p.Name, DataType = GetSqlDataType(p.PropertyType) }).ToList();
+
+            Console.WriteLine($"Field Names: {columns.Count()}\nData Types: {columns.Count()}");
+            // Create a new table in the database using the extracted field names and data types
+            using (connection = new MySqlConnection(connectionString))
+            {
+                int batchSize = 1000;
+
+                await connection.OpenAsync();
+                Console.WriteLine("Starting");
+                string tableName = "mytable";
+                string createTableQuery = "CREATE TABLE " + tableName + " (";
+                for (int i = 0; i < columns.Count; i++)
+                {
+                    Console.WriteLine($"i: {i}");
+                    string columnName = columns[i].Name;
+                    string sqlDataType = columns[i].DataType;
+                    createTableQuery += columnName + " " + sqlDataType + ",";
+
+                }
+                createTableQuery = createTableQuery.TrimEnd(',') + ")";
+                using (MySqlCommand command = new MySqlCommand(createTableQuery, connection))
+                {
+                    await command.ExecuteNonQueryAsync();
+                }
+
+                // Insert the data into the new table using a parameterized SQL query
+                string insertQuery = "INSERT INTO " + tableName + " (";
+                foreach (var column in columns)
+                {
+                    insertQuery += column.Name + ",";
+                }
+                insertQuery = insertQuery.TrimEnd(',') + ") VALUES (";
+                for (int i = 0; i < columns.Count; i++)
+                {
+                    insertQuery += "@" + i.ToString() + ",";
+                }
+                insertQuery = insertQuery.TrimEnd(',') + ")";
+                Console.WriteLine(insertQuery);
+                using (MySqlCommand command = new MySqlCommand(insertQuery, connection))
+                {
+                    // Execute the insert query for each batch of rows
+                    for (int batchStart = 0; batchStart < data.Count; batchStart += batchSize)
+                    {
+                        int batchEnd = Math.Min(batchStart + batchSize, data.Count);
+                        for (int rowIndex = batchStart; rowIndex < batchEnd; rowIndex++)
+                        {
+                            Waifu row = data[rowIndex];
+                            for (int i = 0; i < columns.Count; i++)
+                            {
+                                string columnName = columns[i].Name;
+                                object columnValue = properties.Single(p => p.Name == columnName).GetValue(row);
+                                command.Parameters.AddWithValue("@" + i.ToString(), columnValue ?? DBNull.Value);
+                            }
+                            await command.ExecuteNonQueryAsync();
+                            command.Parameters.Clear();
+                        }
+                    }
+                }
+            }
+
+            Console.WriteLine("Done");
+        }
+        private static string GetSqlDataType(Type dataType)
+        {
+            if (dataType == typeof(int) || dataType == typeof(long))
+            {
+                return "BIGINT";
+            }
+            else if (dataType == typeof(float) || dataType == typeof(double))
+            {
+                return "FLOAT";
+            }
+            else if (dataType == typeof(decimal))
+            {
+                return "DECIMAL(18,4)";
+            }
+            else if (dataType == typeof(DateTime))
+            {
+                return "DATETIME";
+            }
+            else if (dataType == typeof(bool))
+            {
+                return "BIT";
+            }
+            else if (dataType == typeof(List<Tuple<int, int>>))
+            {
+                return "JSON"; // assuming the data will be stored as a string
+            }
+            else if (dataType == typeof(List<int>))
+            {
+                return "JSON";
+            }
+            else
+            {
+                return "VARCHAR(255)";
+            }
+        }
+        
+        private static object GetFieldValue(Waifu row, string fieldName)
+        {
+            var property = typeof(Waifu).GetProperty(fieldName);
+            if (property != null)
+            {
+                return property.GetValue(row);
+            }
+            else
+            {
+                return null;
+            }
+        }
+        public static string TimeElapsed(DateTime startTime)
+        {
+            DateTime endTime = DateTime.Now;
+            TimeSpan elapsedTime = endTime - startTime;
+
+            
+            return elapsedTime.ToString("mm':'ss");
+        }
+
+        public class CatchWaifusAutoCompleteHandler : AutocompleteHandler
+        {
+            public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services)
+            {
+                // Create a collection with suggestions for autocomplete
+                IEnumerable<AutocompleteResult> results = new[]
+                {
+                    new AutocompleteResult("Name1", "value111"),
+                    new AutocompleteResult("Name2", "value2")
+                };
+
+                // max - 25 suggestions at a time (API limit)
+                return AutocompletionResult.FromSuccess(results.Take(25));
+            }
+        }
+            
+        public class MyAutocompleteHandler : AutocompleteHandler
+        {
+            public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services)
+            {
+                // Create a collection with suggestions for autocomplete
+                IEnumerable<AutocompleteResult> results = new[]
+                {
+                    new AutocompleteResult("character", "Spike Spiegel"),
+                    new AutocompleteResult("anime", "Cowboy Beebop")
+                };
+
+                // max - 25 suggestions at a time (API limit)
+                return AutocompletionResult.FromSuccess(results.Take(25));
+            }
+        }
+    }
+    public class AnilistQuery
+    {
+        public static string buildListSearchString = @"
+                query($perPage: Int, $page: Int) {
+                  Page(perPage: $perPage, page: $page) {
+                    characters(sort: FAVOURITES_DESC) {
+                      id
+                      name {
+                        full
+                        first
+                        middle
+                        last
+                        userPreferred
+                        alternative
+                        alternativeSpoiler
+                        native
+                      }
+                      gender
+                      age
+                      dateOfBirth {
+                        month
+                        day
+                        year
+                      }
+                      image {
+                        large
+                        medium
+                      }
+                      media(sort: FAVOURITES_DESC) {
+                        nodes {
+                          popularity
+                          title {
+                            userPreferred
+                            english
+                            romaji
+                            native
+                          }
+                          id
+                          isAdult
+                          type
+                        }
+                      }
+                      favourites
+                    }
+                  }
+                }
+            ";
+    }
+    public class RedditPostData
+    {
+        public string title { get; set; }
+        public string imageURL { get; set; }
+    }
+    
+    public class Character
+    {
+        public int Id { get; set; }
+        public Name Name { get; set; }
+        public string Gender { get; set; }
+        public string Age { get; set; }
+        public DateOfBirth DateOfBirth { get; set; }
+        public Image Image { get; set; }
+        public Media Media { get; set; }
+        public int Favourites { get; set; }
+    }
+
+    public class Data
+    {
+        public Page Page { get; set; }
+    }
+
+    public class DateOfBirth
+    {
+        public int? month { get; set; }
+        public int? day { get; set; }
+        public int? year { get; set; }
+    }
+
+    public class Image
+    {
+        public string Large { get; set; }
+        public string Medium { get; set; }
+    }
+
+    public class Media
+    {
+        public List<Node> nodes { get; set; }
+    }
+
+    public class Name
+    {
+        public string Full { get; set; }
+        public string First { get; set; }
+        public string Middle { get; set; }
+        public string Last { get; set; }
+        public string UserPreferred { get; set; }
+        public List<string> Alternative { get; set; }
+        public List<string> AlternativeSpoiler { get; set; }
+        public string Native { get; set; }
+    }
+
+    public class Node
+    {
+        public int? Popularity { get; set; }
+        public Title Title { get; set; }
+        public int? Id { get; set; }
+        public bool? IsAdult { get; set; }
+        public string Type { get; set; }
+    }
+
+    public class Page
+    {
+        public List<Character> Characters { get; set; }
+    }
+
+    public class Root
+    {
+        public Data Data { get; set; }
+    }
+
+    public class Title
+    {
+        public string UserPreferred { get; set; }
+        public string English { get; set; }
+        public string Romaji { get; set; }
+        public string Native { get; set; }
+    }
+
+
+}

@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "ALICEIDLE": {
+      "commandName": "Project",
+      "hotReloadEnabled": true,
+      "nativeDebugging": false
+    },
+    "Docker": {
+      "commandName": "Docker"
+    }
+  }
+}
