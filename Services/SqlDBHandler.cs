@@ -293,7 +293,7 @@ namespace ALICEIDLE.Services
             MySqlConnection connection = new MySqlConnection(connectionString);
             await connection.OpenAsync();
 
-            List<PlayerData> data = JsonConvert.DeserializeObject<List<PlayerData>>(File.ReadAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\waifu_data.json"));
+            List<PlayerData> data = JsonConvert.DeserializeObject<List<PlayerData>>(File.ReadAllText($@"{Program.basePath}\waifu_data.json"));
             data = data.OrderByDescending(p => p.Id).ToList();
 
             int batchSize = 1000;
@@ -433,7 +433,7 @@ public static async Task<PlayerData> RetrievePlayerData(ulong id)
         {
             string connectionString = Program._config["SQLConnectionString"];
             MySqlConnection connection = new MySqlConnection(connectionString);
-            List<Waifu> data = JsonConvert.DeserializeObject<List<Waifu>>(File.ReadAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\waifus.json"));
+            List<Waifu> data = JsonConvert.DeserializeObject<List<Waifu>>(File.ReadAllText($@"{Program.basePath}\waifus.json"));
             data.OrderBy(p => p.Favorites).Reverse().ToList();
             // Extract the field names and data types from the C# object
             // Extract the field names and data types from the Waifu class

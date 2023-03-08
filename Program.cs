@@ -12,6 +12,7 @@ namespace ALICEIDLE
     {
         // setup our fields we assign later
         public static IConfiguration _config { get; set; }
+        public static string basePath { get; set; }
         private DiscordSocketClient _client;
         private InteractionService _commands;
         public static ulong[] _serverIds = new ulong[] { 631818882901868574, 642655184152952833, 891524758263431188 };
@@ -25,9 +26,11 @@ namespace ALICEIDLE
 
         public Program()
         {
+            basePath = Directory.Exists("/Data/") ? "/Data/" : Path.Join(AppContext.BaseDirectory, "Data");
+            Console.WriteLine(basePath);
             // create the configuration
             var _builder = new ConfigurationBuilder()
-                .SetBasePath(AppContext.BaseDirectory)
+                .SetBasePath(basePath)
                 .AddJsonFile(path: "config.json");
             
             // build the configuration and assign to _config          

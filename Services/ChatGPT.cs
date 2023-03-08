@@ -1,6 +1,5 @@
 ﻿using Discord;
 using Newtonsoft.Json;
-using Org.BouncyCastle.Crypto.Tls;
 using System;
 using System.Collections.Generic;
 using System.Linq;
