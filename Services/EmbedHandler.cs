@@ -15,7 +15,7 @@ namespace ALICEIDLE.Services
         public static Color HomeColor = new Color(23, 178, 255);
         public static UserData userData { get; set; }
         public static OwnedWaifus wList { get; set; }
-        private static Dictionary<ulong, PlayerData> playerDictionary = new Dictionary<ulong, PlayerData>();
+        public static Dictionary<ulong, PlayerData> playerDictionary = new Dictionary<ulong, PlayerData>();
         
 
         public static async Task<EmbedBuilder> GelEmbedBuilder(string user, string type)
@@ -120,7 +120,7 @@ namespace ALICEIDLE.Services
                 return;
             }
 
-            WaifuEmbedInfo embedInfo = CreateEmbedContent(waifu);
+            WaifuEmbedInfo embedInfo = CreateEmbedContent(playerData, waifu);
             emBuilder.WithImageUrl(embedInfo.ImageURL)
                      .WithColor(embedInfo.EmbedColor)
                      .AddField(embedInfo.PrimaryField)
@@ -224,7 +224,7 @@ namespace ALICEIDLE.Services
                 return emBuilder;
             }
             waifu = await WaifuHandler.QueryWaifuById(player.CurrentWaifu);
-            WaifuEmbedInfo embedInfo = CreateEmbedContent(waifu);
+            WaifuEmbedInfo embedInfo = CreateEmbedContent(player, waifu);
             emBuilder.WithImageUrl(embedInfo.ImageURL).WithColor(embedInfo.EmbedColor)
                 .AddField(embedInfo.PrimaryField)
                 .AddField(embedInfo.InfoField)
@@ -235,10 +235,16 @@ namespace ALICEIDLE.Services
             return emBuilder;
         }
 
-        public static WaifuEmbedInfo CreateEmbedContent(Waifu waifu)
+        public static WaifuEmbedInfo CreateEmbedContent(PlayerData player, Waifu waifu)
         {
             string info = "";
             string gender = "";
+            string primaryFieldString = $"{waifu.Rarity}\n{waifu.XpValue}xp\n";
+            var waifuTuple = player.OwnedWaifus.Find(w => w.Item1 == waifu.Id);
+            if (waifuTuple != null)
+                primaryFieldString += $"Level: {waifuTuple.Item2}";
+            else
+                primaryFieldString += $"Level: 0";
             try
             {
                 gender = waifu.Gender.ToLower();
@@ -276,7 +282,7 @@ namespace ALICEIDLE.Services
                 EmbedColor = WaifuHandler.GetColorByRarity(waifu.Rarity),
                 PrimaryField = new EmbedFieldBuilder()
                     .WithName(waifu.Name.Full)
-                    .WithValue($"{waifu.Rarity}\n{waifu.XpValue}xp\n")
+                    .WithValue(primaryFieldString)
                     .WithIsInline(true),
                 InfoField = new EmbedFieldBuilder()
                     .WithName("Info")

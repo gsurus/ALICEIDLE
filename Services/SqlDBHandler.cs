@@ -36,7 +36,7 @@ namespace ALICEIDLE.Services
             }
             if (gender.ToLower() != "none")
                 query += $" WHERE `Gender` = \"{gender}\" ";
-
+            
             switch (tier)
             {
                 case 0:

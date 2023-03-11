@@ -79,6 +79,10 @@ namespace ALICEIDLE
             PlayerData playerData = await SqlDBHandler.RetrievePlayerData(Context.User.Id);
             playerData.GenderPreference = preference;
             await SqlDBHandler.UpdatePlayerData(playerData);
+
+            if (EmbedHandler.playerDictionary.ContainsKey(playerData.Id))
+                EmbedHandler.playerDictionary[playerData.Id] = playerData;
+            
             await RespondAsync("Preference Modified.", ephemeral: true);
         }
         

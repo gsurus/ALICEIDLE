@@ -31,16 +31,27 @@ namespace ALICEIDLE.Logic
             int rollResult = RollGacha(itemProbabilities, pityRateRolls, pityRateIncrease, player);
 
             bool duplicate = false;
+            List<int> favoriteIds = FavoritesToIdList(player.OwnedWaifus);
             var selectedChr = await GetRandomWaifuByTier(rollResult, player);
             duplicate = await IsDuplicateRoll(selectedChr, player.RollHistory);
-
-            while (duplicate)
+            
+            //Check if the roll is a duplicate of any of our favorites
+            if(await IsDuplicateFavorite(await IdListToWaifuList(favoriteIds), selectedChr))
             {
-                Console.WriteLine($"Rolled Duplicate: {selectedChr.Name.Full} (id){selectedChr.Id}");
-                rollResult = RollGacha(itemProbabilities, pityRateRolls, pityRateIncrease, player);
-                selectedChr = await GetRandomWaifuByTier(rollResult, player);
-                duplicate = await IsDuplicateRoll(selectedChr, player.RollHistory.Take(20).ToList());
+                var favoritedWaifu = player.OwnedWaifus.Find(d => d.Item1 == selectedChr.Id);
+                favoritedWaifu = new Tuple<int, int>(favoritedWaifu.Item1, favoritedWaifu.Item2 + 1);
             }
+            else if (duplicate)
+            {
+                while (duplicate)
+                {
+                    Console.WriteLine($"Rolled Duplicate: {selectedChr.Name.Full} (id){selectedChr.Id}");
+                    rollResult = RollGacha(itemProbabilities, pityRateRolls, pityRateIncrease, player);
+                    selectedChr = await GetRandomWaifuByTier(rollResult, player);
+                    duplicate = await IsDuplicateRoll(selectedChr, player.RollHistory.Take(20).ToList());
+                }
+            }
+
 
             string rarity = CalculateRarity(selectedChr.Favorites);
             int xpValue = CalculateXPValue(selectedChr.Favorites, rarity);
