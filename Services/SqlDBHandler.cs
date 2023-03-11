@@ -346,51 +346,98 @@ namespace ALICEIDLE.Services
             else
                 return true;
         }
-public static async Task<PlayerData> RetrievePlayerData(ulong id)
-{
-    using MySqlConnection connection = new MySqlConnection(connectionString);
-    await connection.OpenAsync();
-    
-    string query = $"SELECT * FROM `aliceidle`.`PlayerData` WHERE `Id` = {id}";
-    using MySqlCommand command = new MySqlCommand(query, connection);
-    using MySqlDataReader reader = await command.ExecuteReaderAsync();
-
-    if (await reader.ReadAsync())
-    {
-        var playerData = new PlayerData();
-        var properties = playerData.GetType().GetProperties();
-
-        for (int i = 0; i < reader.FieldCount; i++)
+        public static async Task<PlayerData> RetrievePlayerData(ulong id)
         {
-            var columnName = reader.GetName(i);
-            var property = properties.FirstOrDefault(p => p.Name == columnName);
-            if (property != null)
+            using MySqlConnection connection = new MySqlConnection(connectionString);
+            await connection.OpenAsync();
+
+            string query = $"SELECT * FROM `aliceidle`.`PlayerData` WHERE `Id` = {id}";
+            using MySqlCommand command = new MySqlCommand(query, connection);
+            using MySqlDataReader reader = await command.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
             {
-                var value = reader.GetValue(i);
-                if (value is DBNull)
+                var playerData = new PlayerData();
+                var properties = playerData.GetType().GetProperties();
+
+                for (int i = 0; i < reader.FieldCount; i++)
                 {
-                    value = null;
-                    return null;
+                    var columnName = reader.GetName(i);
+                    var property = properties.FirstOrDefault(p => p.Name == columnName);
+                    if (property != null)
+                    {
+                        var value = reader.GetValue(i);
+                        if (value is DBNull)
+                        {
+                            value = null;
+                            return null;
+                        }
+
+                        if (property.PropertyType == typeof(List<Tuple<int, int>>) && value is string tupleListString)
+                        {
+                            value = JsonConvert.DeserializeObject<List<Tuple<int, int>>>(tupleListString);
+                        }
+                        else if (property.PropertyType == typeof(List<int>) && value is string intListString)
+                        {
+                            value = JsonConvert.DeserializeObject<List<int>>(intListString);
+                        }
+
+                        property.SetValue(playerData, Convert.ChangeType(value, property.PropertyType));
+                    }
                 }
 
-                if (property.PropertyType == typeof(List<Tuple<int, int>>) && value is string tupleListString)
-                {
-                    value = JsonConvert.DeserializeObject<List<Tuple<int, int>>>(tupleListString);
-                }
-                else if (property.PropertyType == typeof(List<int>) && value is string intListString)
-                {
-                    value = JsonConvert.DeserializeObject<List<int>>(intListString);
-                }
-
-                property.SetValue(playerData, Convert.ChangeType(value, property.PropertyType));
+                return playerData;
             }
+
+            return null;
+        }
+        public static async Task<List<PlayerData>> RetrieveAllPlayerData()
+        {
+            using MySqlConnection connection = new MySqlConnection(connectionString);
+            await connection.OpenAsync();
+
+            string query = "SELECT * FROM `aliceidle`.`PlayerData`";
+            using MySqlCommand command = new MySqlCommand(query, connection);
+            using MySqlDataReader reader = await command.ExecuteReaderAsync();
+
+            List<PlayerData> playerDataList = new List<PlayerData>();
+
+            while (await reader.ReadAsync())
+            {
+                var playerData = new PlayerData();
+                var properties = playerData.GetType().GetProperties();
+
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    var columnName = reader.GetName(i);
+                    var property = properties.FirstOrDefault(p => p.Name == columnName);
+                    if (property != null)
+                    {
+                        var value = reader.GetValue(i);
+                        if (value is DBNull)
+                        {
+                            value = null;
+                            return null;
+                        }
+
+                        if (property.PropertyType == typeof(List<Tuple<int, int>>) && value is string tupleListString)
+                        {
+                            value = JsonConvert.DeserializeObject<List<Tuple<int, int>>>(tupleListString);
+                        }
+                        else if (property.PropertyType == typeof(List<int>) && value is string intListString)
+                        {
+                            value = JsonConvert.DeserializeObject<List<int>>(intListString);
+                        }
+
+                        property.SetValue(playerData, Convert.ChangeType(value, property.PropertyType));
+                    }
+                }
+                playerDataList.Add(playerData);
+            }
+            playerDataList = playerDataList.OrderByDescending(x => x.Xp).ToList();
+            return playerDataList;
         }
 
-        return playerData;
-    }
-
-    return null;
-}
         public static object GetColumnValue(PlayerData row, string columnName)
         {
             var property = typeof(PlayerData).GetProperty(columnName);

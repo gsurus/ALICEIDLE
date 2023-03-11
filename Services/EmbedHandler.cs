@@ -157,7 +157,8 @@ namespace ALICEIDLE.Services
         public static async Task ProcessLeaderboard(EmbedBuilder emBuilder)
         {
             string leaderboardPlayers = "";
-            var players = await WaifuHandler.RetrieveAllPlayerData();
+            var players = await SqlDBHandler.RetrieveAllPlayerData();
+            //var players = await WaifuHandler.RetrieveAllPlayerData();
             int i = 1;
             foreach (var player in players)
             {
