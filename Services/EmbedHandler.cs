@@ -203,9 +203,10 @@ namespace ALICEIDLE.Services
                     player.CurrentWaifu = waifuList.Waifus[nextWaifu].Id;
                     await WaifuHandler.RemoveWaifu(player, waifuList.Waifus[waifuIndex].Id);
                     break;
-                case CmdType.Landing:
+                case CmdType.Favorites:
                     player.CurrentWaifu = waifuList.Waifus.FirstOrDefault().Id;
                     waifuToDisplay = waifu;
+                    Console.WriteLine(player.CurrentWaifu);
                     break;
             }
 
@@ -217,7 +218,8 @@ namespace ALICEIDLE.Services
         static async Task<EmbedBuilder> HistoryBuilder(EmbedBuilder emBuilder, PlayerData player, List<Waifu> waifus, int nextWaifu)
         {
             Waifu waifu = new Waifu();
-            if (player.CurrentWaifu > -1)
+            Console.WriteLine(player.CurrentWaifu);
+            if (player.CurrentWaifu == -1)
             {
                 emBuilder
                     .WithTitle("No Favorites")
