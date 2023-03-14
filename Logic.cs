@@ -148,7 +148,7 @@ namespace ALICEIDLE.Logic
         public static async Task RemoveWaifu(PlayerData player, int waifuId)
         {
             Console.WriteLine(player.OwnedWaifus.Count);
-            foreach (var tuple in player.OwnedWaifus)
+            foreach (var tuple in player.OwnedWaifus.ToList())
             {
                 if (tuple.Item1 == waifuId)
                     player.OwnedWaifus.RemoveAt(player.OwnedWaifus.IndexOf(tuple));
