@@ -432,6 +432,15 @@ namespace ALICEIDLE.Logic
 
             return level;
         }
+        public static int CalculateXPFromLevel(int level)
+        {
+            int baseXp = 100;
+            for (int i = 0; i < level; i++)
+            {
+                baseXp = (int)(baseXp * 1.3);
+            }
+            return baseXp;
+        }
         public static int CalculateXPRequired(int totalXP)
         {
             int xp = totalXP;
