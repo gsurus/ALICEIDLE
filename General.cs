@@ -82,10 +82,21 @@ namespace ALICEIDLE
 
             if (EmbedHandler.playerDictionary.ContainsKey(playerData.Id))
                 EmbedHandler.playerDictionary[playerData.Id] = playerData;
-            
-            await RespondAsync("Preference Modified.", ephemeral: true);
+
+            await RespondAsync(embed: new EmbedBuilder().WithTitle("Preference Modified").WithColor(EmbedColors.successColor).Build(), ephemeral: true);
         }
-        
+        [SlashCommand("title_preference", "Set the preferred display language of anime titles.")]
+        public async Task TitleLanguagePreference([Choice("Native", "Native"), Choice("Romanji", "Romanji"), Choice("English", "English")] string preference)
+        {
+            PlayerData playerData = await SqlDBHandler.RetrievePlayerData(Context.User.Id);
+            playerData.AnimeNamePreference = preference;
+            await SqlDBHandler.UpdatePlayerData(playerData);
+
+            if (EmbedHandler.playerDictionary.ContainsKey(playerData.Id))
+                EmbedHandler.playerDictionary[playerData.Id] = playerData;
+
+            await RespondAsync(embed: new EmbedBuilder().WithTitle("Preference Modified").WithColor(EmbedColors.successColor).Build(), ephemeral: true);
+        }
         [SlashCommand("latency", "Get your latency")]
         public async Task Latency()
         {

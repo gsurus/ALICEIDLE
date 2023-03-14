@@ -3,6 +3,8 @@ using Discord.WebSocket;
 using ALICEIDLE.Logic;
 using ALICEIDLE.Gelbooru;
 using System.Data;
+using Microsoft.EntityFrameworkCore.InMemory.Storage.Internal;
+using System.Numerics;
 
 namespace ALICEIDLE.Services
 { 
@@ -69,7 +71,6 @@ namespace ALICEIDLE.Services
                 }
                 else // Retrieve player data from the database
                     playerData = await SqlDBHandler.RetrievePlayerData(uid);
-
                 // Add player data to the dictionary
                 playerDictionary.Add(uid, playerData);
             }
@@ -102,11 +103,21 @@ namespace ALICEIDLE.Services
                 case CmdType.Favorites:
                 case CmdType.Next:
                 case CmdType.Previous:
+                case CmdType.Remove:
+                    if (playerData.OwnedWaifus.Count == 0)
+                    {
+                        EmbedBuilder emb = new EmbedBuilder()
+                            .WithTitle("No Favorites")
+                            .WithDescription("Add a favorite, and it'll be added to this page.");
+                        return emb;
+                    }
+                    wList.Waifus = await SqlDBHandler.QueryWaifuByIds(WaifuHandler.FavoritesToIdList(playerData.OwnedWaifus), true);
+                    await ProcessWaifuIterator(emBuilder, playerData, wList, GetCommandType(type));
+                    break;
                 case CmdType.History:
                 case CmdType.HistNext:
                 case CmdType.HistPrevious:
-                case CmdType.Remove:
-                    wList.Waifus = await SqlDBHandler.QueryWaifuByIds(WaifuHandler.FavoritesToIdList(playerData.OwnedWaifus), true);
+                    wList.Waifus = await SqlDBHandler.QueryWaifuByIds(playerData.RollHistory, true);
                     await ProcessWaifuIterator(emBuilder, playerData, wList, GetCommandType(type));
                     break;
             }
@@ -126,12 +137,13 @@ namespace ALICEIDLE.Services
                      .AddField(embedInfo.PrimaryField)
                      .AddField(embedInfo.InfoField)
                      .AddField(embedInfo.LinkField)
-                     .WithFooter(new EmbedFooterBuilder().WithText($"{waifu.Series}"));
+                     .WithFooter(new EmbedFooterBuilder().WithText($"{await GetAnimeNameByPreference(playerData.AnimeNamePreference, waifu)}"));
         }
 
         public static async Task ProcessFavorite(EmbedBuilder emBuilder, PlayerData playerData, string name)
         {
             var _waifu = await WaifuHandler.Favorite(playerData, name);
+            
             if (_waifu == null)
             {
                 emBuilder.AddField("Duplicate", $"{name} is already in your favorites", false)
@@ -178,19 +190,36 @@ namespace ALICEIDLE.Services
         {
             int waifuIndex = 0;
             int nextWaifu = 0;
-            Waifu waifu = await WaifuHandler.QueryWaifuById(player.CurrentWaifu); 
+
+
+            switch (GetCommandType(arg))
+            {
+                case CmdType.History:
+                    if(player.CurrentWaifu == 0)
+                        player.CurrentWaifu = player.RollHistory.First();
+                    break;
+                case CmdType.Favorites:
+                    if(player.CurrentWaifu == 0 && player.OwnedWaifus != null)
+                        player.CurrentWaifu = player.OwnedWaifus.First().Item1;
+                    break;
+            }
+
+
+
+            Waifu waifu = await WaifuHandler.QueryWaifuById(player.CurrentWaifu);
             waifuIndex = waifuList.Waifus.FindIndex(a => a.Name.Full == waifu.Name.Full);
 
             switch (GetCommandType(arg))
             {
                 case CmdType.Next:
+                case CmdType.HistNext:
                     nextWaifu = waifuIndex + 1;
-                    Console.WriteLine(waifu.Name.Full);
                     if (nextWaifu > waifuList.Waifus.Count() - 1)
                         nextWaifu = 0;
                     player.CurrentWaifu = waifuList.Waifus[nextWaifu].Id;
                     break;
                 case CmdType.Previous:
+                case CmdType.HistPrevious:
                     nextWaifu = waifuIndex - 1;
                     if (nextWaifu < 0)
                         nextWaifu = waifuList.Waifus.Count() - 1;
@@ -204,9 +233,9 @@ namespace ALICEIDLE.Services
                     await WaifuHandler.RemoveWaifu(player, waifuList.Waifus[waifuIndex].Id);
                     break;
                 case CmdType.Favorites:
+                case CmdType.History:
                     player.CurrentWaifu = waifuList.Waifus.FirstOrDefault().Id;
                     waifuToDisplay = waifu;
-                    Console.WriteLine(player.CurrentWaifu);
                     break;
             }
 
@@ -218,7 +247,6 @@ namespace ALICEIDLE.Services
         static async Task<EmbedBuilder> HistoryBuilder(EmbedBuilder emBuilder, PlayerData player, List<Waifu> waifus, int nextWaifu)
         {
             Waifu waifu = new Waifu();
-            Console.WriteLine(player.CurrentWaifu);
             if (player.CurrentWaifu == -1)
             {
                 emBuilder
@@ -232,17 +260,32 @@ namespace ALICEIDLE.Services
                 .AddField(embedInfo.PrimaryField)
                 .AddField(embedInfo.InfoField)
                 .AddField(embedInfo.LinkField)
+                .AddField(new EmbedFieldBuilder().WithName("Anime").WithValue(await GetAnimeNameByPreference(player.AnimeNamePreference, waifu)))
                 .WithFooter(
                     new EmbedFooterBuilder()
                         .WithText($"Page {nextWaifu + 1} of {waifus.Count()}"));
             return emBuilder;
         }
+        public static async Task<string> GetAnimeNameByPreference(string preference, Waifu waifu)
+        {
+            var mediaTitle = waifu.Media.nodes.FirstOrDefault().Title;
 
+            if (preference == "English" && mediaTitle.English != null)
+                return mediaTitle.English;
+            else if (preference == "Romanji" && mediaTitle.Romaji != null)
+                return mediaTitle.Romaji;
+            else if (preference == "Native" && mediaTitle.Native != null)
+                return mediaTitle.Native;
+            else if (preference == "none")
+                return mediaTitle.UserPreferred;
+            else    
+                return null;
+        }
         public static WaifuEmbedInfo CreateEmbedContent(PlayerData player, Waifu waifu)
         {
             string info = "";
             string gender = "";
-            string primaryFieldString = $"{waifu.Rarity}\n{waifu.XpValue}xp\n";
+            string primaryFieldString = $"{waifu.Rarity} ({waifu.XpValue} XP\n";
             var waifuTuple = player.OwnedWaifus.Find(w => w.Item1 == waifu.Id);
             if (waifuTuple != null)
                 primaryFieldString += $"Level: {waifuTuple.Item2}";

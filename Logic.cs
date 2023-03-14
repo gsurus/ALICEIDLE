@@ -81,6 +81,8 @@ namespace ALICEIDLE.Logic
         }
         public static async Task<bool> IsDuplicateFavorite(List<Waifu> favorites, Waifu waifu)
         {
+            if (favorites == null || favorites.Count() <= 0)
+                return false;
             var match = favorites.Find(d => d.ImageURL == waifu.ImageURL);
             if (match != null)
                 return true;

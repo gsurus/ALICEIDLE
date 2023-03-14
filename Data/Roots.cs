@@ -33,6 +33,7 @@ namespace ALICEIDLE
         public string Name { get; set; }
         public ulong Id { get; set; }
         public string GenderPreference { get; set; } = "none";
+        public string AnimeNamePreference { get; set; } = "none";
         public int Level { get; set; } = 1;
         public int Xp { get; set; } = 0;
         public double WaifuAmount { get; set; } = 0;

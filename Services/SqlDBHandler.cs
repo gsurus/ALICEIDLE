@@ -77,13 +77,12 @@ namespace ALICEIDLE.Services
             string query = $"{selectFromWhere} `Id` = {id};";
 
             List<Waifu> waifu = await GetWaifusFromQuery(query);
-            return waifu.FirstOrDefault();
+            return waifu.First();
         }
         public static async Task<Waifu> QueryWaifuByName(string name)
         {
             string query = $"{selectFromWhere} `Name_Full` = \"{name}\";";
             List<Waifu> waifu = await GetWaifusFromQuery(query);
-
             return waifu.FirstOrDefault();
         }
         static async Task<List<Waifu>> GetWaifusFromQuery(string query)
@@ -99,10 +98,10 @@ namespace ALICEIDLE.Services
             {
                 Waifu waifu = await MapToWaifu(reader);
                 waifuList.Add(waifu);
+                //
             }
             await connection.CloseAsync();
-
-            return waifuList;
+            return waifuList.ToList();
         }
         public static async Task<Waifu> MapToWaifu(MySqlDataReader reader)
         {
@@ -340,7 +339,6 @@ namespace ALICEIDLE.Services
             PlayerData playerData = await RetrievePlayerData(id);
             if (playerData == null)
             {
-                Console.WriteLine("Returned false");
                 return false;
             }
             else
