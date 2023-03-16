@@ -1,5 +1,7 @@
-﻿using Discord;
-
+﻿using Colorful;
+using Discord;
+using Discord.WebSocket;
+using sysColor = System.Drawing.Color;
 namespace ALICEIDLE
 {
     public class Variables

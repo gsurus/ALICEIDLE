@@ -1,0 +1,10 @@
+{
+    "debug":"debug",
+    "Discord":"success",
+    "Gateway":"success",
+    "Connecting":"status",
+    "Connected":"success",
+    "Ready":"success",
+    "adding":"info",
+    "Discord.Net":"success"
+}
