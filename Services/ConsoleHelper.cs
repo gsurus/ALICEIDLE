@@ -7,7 +7,7 @@ using Formatter = Colorful.Formatter;
 using Console = System.Console;
 using sysColor = System.Drawing.Color;
 using ALICEIDLE.Services;
-namespace aliceidle
+namespace ALICEIDLE
 {
     public class ConsoleHelper
     {   //green
@@ -83,7 +83,7 @@ namespace aliceidle
                 new Formatter($"[{chnl.Guild.Name}]", info)
             };
 
-            cConsole.WriteLineFormatted(timeString() + " {1} - {0} | " + _msg.Content, sysColor.White, msgForm);
+            cConsole.WriteLineFormatted(timeString() + " Message     {1} - {0} | " + _msg.Content, sysColor.White, msgForm);
         }
 
         public static async Task<StyleSheet> GetSysLogStyleSheet()

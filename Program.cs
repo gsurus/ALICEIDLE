@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ALICEIDLE.Services;
 using MySqlConnector;
 using cConsole = Colorful.Console;
-using aliceidle;
+using ALICEIDLE.Logging;
 
 namespace ALICEIDLE
 {
@@ -31,7 +31,7 @@ namespace ALICEIDLE
         {
             basePath = Directory.Exists("/Data/") ? "/Data/" : Path.Join(AppContext.BaseDirectory, "Data");
 
-            Console.WriteLine(basePath);
+            //Console.WriteLine(basePath);
             // create the configuration
             var _builder = new ConfigurationBuilder()
                 .SetBasePath(basePath)
@@ -85,21 +85,22 @@ namespace ALICEIDLE
         }
         private Task LogMessageAsync(SocketMessage message)
         {
-            ConsoleHelper.WriteLogMessage(message);
-            return Task.CompletedTask;
+            if (message.Author.IsBot)
+                return Task.CompletedTask;
+            else
+                ConsoleHelper.WriteLogMessage(message);
+                LogHelper.AddServerMessage(message);
+                return Task.CompletedTask;
         }
 
         private async Task ReadyAsync()
         {
             if (IsDebug())
-            {
                 await AddCommandsToServers();
-            }
             else
-            {
                 // this method will add commands globally, but can take around an hour
                 await _commands.RegisterCommandsGloballyAsync(true);
-            }
+            
             string connectionString = SqlDBHandler.connectionString;
             SqlDBHandler.connection = new MySqlConnection(connectionString);
         }
