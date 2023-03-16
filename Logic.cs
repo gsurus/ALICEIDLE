@@ -29,14 +29,16 @@ namespace ALICEIDLE.Logic
             
             // Roll the gacha
             int rollResult = RollGacha(itemProbabilities, pityRateRolls, pityRateIncrease, player);
-
+            
             bool duplicate = false;
             List<int> favoriteIds = FavoritesToIdList(player.OwnedWaifus);
-            var selectedChr = await GetRandomWaifuByTier(rollResult, player);
-            duplicate = await IsDuplicateRoll(selectedChr, player.RollHistory);
-            
+            Waifu selectedChr = null;
+
+            selectedChr = await GetRandomWaifuByTier(rollResult, player);
+            duplicate = await IsDuplicateRoll(selectedChr, player);
+
             //Check if the roll is a duplicate of any of our favorites
-            if(await IsDuplicateFavorite(await IdListToWaifuList(favoriteIds), selectedChr))
+            if (await IsDuplicateFavorite(await IdListToWaifuList(favoriteIds), selectedChr))
             {
                 var favoritedWaifu = player.OwnedWaifus.Find(d => d.Item1 == selectedChr.Id);
                 favoritedWaifu = new Tuple<int, int>(favoritedWaifu.Item1, favoritedWaifu.Item2 + 1);
@@ -48,7 +50,7 @@ namespace ALICEIDLE.Logic
                     Console.WriteLine($"Rolled Duplicate: {selectedChr.Name.Full} (id){selectedChr.Id}");
                     rollResult = RollGacha(itemProbabilities, pityRateRolls, pityRateIncrease, player);
                     selectedChr = await GetRandomWaifuByTier(rollResult, player);
-                    duplicate = await IsDuplicateRoll(selectedChr, player.RollHistory.Take(20).ToList());
+                    duplicate = await IsDuplicateRoll(selectedChr, player);
                 }
             }
 
@@ -68,10 +70,18 @@ namespace ALICEIDLE.Logic
             await UpdatePlayerData(player);
             return selectedChr;
         }
-        public static async Task<bool> IsDuplicateRoll(Waifu character, List<int> rollHistory)
+        public static async Task<bool> IsDuplicateRoll(Waifu character, PlayerData player)
         {
-            for (int i = 0; i < rollHistory.Count; ++i)
-                if (rollHistory[i] == character.Id)
+            var waifus = player.OwnedWaifus;
+            for (int i = 0; i < waifus.Count(); i++)
+            {
+                if (character.Id == waifus[i].Item1)
+                {
+                    player.OwnedWaifus[i] = new Tuple<int, int>(waifus[i].Item1, waifus[i].Item2 + 1);
+                }
+            }
+            for (int i = 0; i < player.RollHistory.Count; ++i)
+                if (player.RollHistory[i] == character.Id)
                 {
                     Console.WriteLine("dupe");
                     return true;

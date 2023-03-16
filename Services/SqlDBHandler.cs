@@ -58,6 +58,7 @@ namespace ALICEIDLE.Services
             }
             
             List<Waifu> waifu = await GetWaifusFromQuery(query);
+
             if (gender.ToLower() != "none")
                 return waifu.Find(c => c.Gender.ToLower() == gender.ToLower());
             else return waifu[0];
