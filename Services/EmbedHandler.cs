@@ -127,9 +127,7 @@ namespace ALICEIDLE.Services
         {
             var waifu = await WaifuHandler.CatchWaifu(playerData);
             if (waifu == null)
-            {
                 return;
-            }
 
             WaifuEmbedInfo embedInfo = CreateEmbedContent(playerData, waifu);
             emBuilder.WithImageUrl(embedInfo.ImageURL)
@@ -358,7 +356,7 @@ namespace ALICEIDLE.Services
             if (waifu.Age != null)
                 ageBDayGender += $"{waifu.Age} years old\n";
             if (waifu.DateOfBirth.day > 0 && waifu.DateOfBirth.month > 0)
-            ageBDayGender += $"{BirthdayFormatter(waifu.DateOfBirth.month, waifu.DateOfBirth.day)}\n";
+                ageBDayGender += $"{BirthdayFormatter(waifu.DateOfBirth.month, waifu.DateOfBirth.day)}\n";
 
             switch (gender)
             {
@@ -377,12 +375,10 @@ namespace ALICEIDLE.Services
                 info += $"\n{r18}";
             string nameInfo = "";
             foreach (var name in waifu.Name.Alternative)
-            {
                 if (name == waifu.Name.Alternative.Last())
                     nameInfo += $"{name}";
                 else
                     nameInfo += $"{name}, ";
-            }
 
             EmbedBuilder emb = new EmbedBuilder()
                 .WithImageUrl(waifu.ImageURL).WithColor(WaifuHandler.GetColorByRarity(waifu.Rarity))

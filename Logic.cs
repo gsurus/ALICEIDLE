@@ -74,19 +74,11 @@ namespace ALICEIDLE.Logic
         {
             var waifus = player.OwnedWaifus;
             for (int i = 0; i < waifus.Count(); i++)
-            {
                 if (character.Id == waifus[i].Item1)
-                {
                     player.OwnedWaifus[i] = new Tuple<int, int>(waifus[i].Item1, waifus[i].Item2 + 1);
-                }
-            }
             for (int i = 0; i < player.RollHistory.Count; ++i)
                 if (player.RollHistory[i] == character.Id)
-                {
-                    Console.WriteLine("dupe");
                     return true;
-                } 
-
             return false;
         }
         public static async Task<bool> IsDuplicateFavorite(List<Waifu> favorites, Waifu waifu)
@@ -106,7 +98,6 @@ namespace ALICEIDLE.Logic
                 return null;
             else
                 waifus = QueryWaifuByIds(ids).Result;
-            
             return waifus;
         }
         public static async Task<Waifu> CharacterToWaifu(Character character)
@@ -117,19 +108,18 @@ namespace ALICEIDLE.Logic
                 DateOfBirth = character.DateOfBirth,
                 Favorites = character.Favourites,
                 Gender = character.Gender,
-                Series = character.Media.nodes.FirstOrDefault().Title.UserPreferred,
+                Series = character.Media.nodes.First().Title.UserPreferred,
                 Media = character.Media,
                 ImageURL = character.Image.Large,
                 Rarity = CalculateRarity(character.Favourites),
                 XpValue = CalculateXPValue(character.Favourites, CalculateRarity(character.Favourites)),
                 Id = character.Id,
-                SeriesId = character.Media.nodes.FirstOrDefault().Id,
-                IsAdult = character.Media.nodes.FirstOrDefault().IsAdult
+                SeriesId = character.Media.nodes.First().Id,
+                IsAdult = character.Media.nodes.First().IsAdult
             };
             if (character.Gender == null)
-            {
                 character.Gender = "unknown";
-            }
+            
             if (character.DateOfBirth.month != null)
             {
                 waifu.DateOfBirth.month = character.DateOfBirth.month;
@@ -144,13 +134,8 @@ namespace ALICEIDLE.Logic
             Waifu _waifu = QueryWaifuByName(name).Result;
 
             if(player.OwnedWaifus.Count > 0)
-            {
                 if (await IsDuplicateFavorite(await IdListToWaifuList(favoriteIds), _waifu))
-                {
-                    Console.WriteLine("Dupe");
                     return null;
-                }
-            }
 
             player.OwnedWaifus.Add(new Tuple<int, int>(_waifu.Id, 0));
             await UpdatePlayerData(player);
@@ -160,11 +145,11 @@ namespace ALICEIDLE.Logic
         public static async Task RemoveWaifu(PlayerData player, int waifuId)
         {
             Console.WriteLine(player.OwnedWaifus.Count);
+            
             foreach (var tuple in player.OwnedWaifus.ToList())
-            {
                 if (tuple.Item1 == waifuId)
                     player.OwnedWaifus.RemoveAt(player.OwnedWaifus.IndexOf(tuple));
-            }
+            
             Console.WriteLine(player.OwnedWaifus.Count);
         }
         public static async Task HistoryFavorite(PlayerData player)
@@ -186,9 +171,8 @@ namespace ALICEIDLE.Logic
             List<int> ids = new List<int>();
 
             foreach (var favorite in favorites)
-            {
                 ids.Add(favorite.Item1);
-            }
+            
             return ids;
         }
         public static async Task<Waifu> GetCharacterByID(int id)
@@ -213,27 +197,18 @@ namespace ALICEIDLE.Logic
             {
                 names.Add(waifu.Name.Full);
                 foreach (var name in waifu.Name.Alternative)
-                {
                     names.Add(name);
-                }
             }
                 
             string closestMatch = FindClosestName(searchName, names, 6);
             Waifu charMatch = waifuList.FirstOrDefault(c => c.Name.Full.ToLower() == closestMatch.ToLower());
             
             if (charMatch == null)
-            {
                 foreach (var waifu in waifuList)
-                {
                     foreach (var name in waifu.Name.Alternative)
-                    {
                         if (name == closestMatch)
                             charMatch = waifu;
-                    }
-                }
-                
-            }
-            
+
             return charMatch;
         }
         static async Task<Waifu> GetRandomWaifuByTier(int rarity, PlayerData player)
@@ -297,9 +272,7 @@ namespace ALICEIDLE.Logic
             if (player.RollsSinceLastSSR > pityRateRolls)
             {
                 for (int j = 3; j > itemProbabilities.Length - 4; j--)
-                {
                     itemProbabilities[j] += pityRateIncrease * (player.RollsSinceLastSSR * 0.01);
-                }
                 Console.WriteLine($"Pity Rate: N {itemProbabilities[0].ToString("#.0000")} | R {itemProbabilities[1].ToString("#.0000")} | SR {itemProbabilities[2].ToString("#.0000")} | SSR {itemProbabilities[3].ToString("#.0000")}");
                 
             }
@@ -372,10 +345,7 @@ namespace ALICEIDLE.Logic
         {
             // Check if the file exists, if not create it
             if (!File.Exists("waifu_data.json"))
-            {
                 File.Create("waifu_data.json").Close();
-            }
-
             // Read the contents of the file
             string fileContents = File.ReadAllText("waifu_data.json");
 
@@ -446,9 +416,7 @@ namespace ALICEIDLE.Logic
         {
             int baseXp = 100;
             for (int i = 0; i < level; i++)
-            {
                 baseXp = (int)(baseXp * 1.3);
-            }
             return baseXp;
         }
         public static int CalculateXPRequired(int totalXP)
@@ -514,29 +482,17 @@ namespace ALICEIDLE.Logic
             int[,] d = new int[s.Length + 1, t.Length + 1];
 
             for (int i = 0; i <= s.Length; i++)
-            {
                 d[i, 0] = i;
-            }
 
             for (int j = 0; j <= t.Length; j++)
-            {
                 d[0, j] = j;
-            }
 
             for (int j = 1; j <= t.Length; j++)
-            {
                 for (int i = 1; i <= s.Length; i++)
-                {
                     if (s[i - 1] == t[j - 1])
-                    {
                         d[i, j] = d[i - 1, j - 1];
-                    }
                     else
-                    {
                         d[i, j] = Math.Min(d[i - 1, j] + 1, Math.Min(d[i, j - 1] + 1, d[i - 1, j - 1] + 1));
-                    }
-                }
-            }
 
             return d[s.Length, t.Length];
         }
