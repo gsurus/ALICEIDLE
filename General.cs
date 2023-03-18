@@ -17,13 +17,20 @@ namespace ALICEIDLE
         public async Task ExampleCommand([Summary("parameter_name"), Autocomplete(typeof(MyAutocompleteHandler))] string parameterWithAutocompletion)
             => await RespondAsync($"Your choice: {parameterWithAutocompletion}");
         */
+
         [SlashCommand("roll", "Go out and catch some waifus")]
         public async Task CatchWaifu()
         {
             var builder = ComponentHandler.BuildComponent("catching");
             await RespondAsync(embed: EmbedHandler.BuildEmbed("catching", Context.User.Username, Context.User.Id).Result.Build(), components: ComponentHandler.BuildComponent("catching").Build());
         }
-        
+        [RequireOwner]
+        [SlashCommand("osutest", "desc")]
+        public async Task OsuTest(string dir)
+        {
+            OsuFile file = await OsuHelper.DeserializeOsuFile(dir);
+            await OsuHelper.GetBeatmapStatistics(file);
+        }
         [SlashCommand("search", "search for a character based on name or ID")]
         public async Task Search(string name = "", int id = -1)
         {
@@ -234,7 +241,7 @@ namespace ALICEIDLE
             var jsonString = System.Text.Json.JsonSerializer.Serialize(waifus, options); 
             File.WriteAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\waifus.json", jsonString);
         }
-        
+        /*
         [RequireOwner]
         [SlashCommand("mariadb", "temp")]
         public async Task MarDB()
@@ -243,7 +250,7 @@ namespace ALICEIDLE
             await SqlDBHandler.InsertPlayerData(Context.User.Username, Context.User.Id);
             Console.WriteLine(data.Name);
         }
-        
+        */
         [RequireOwner]
         [SlashCommand("mariaupdate", "temp")]
         public async Task MariaUpdate()

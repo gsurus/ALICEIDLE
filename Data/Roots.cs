@@ -28,7 +28,7 @@ namespace ALICEIDLE
         public bool? IsAdult { get; set; }
     }
 
-    public class PlayerData
+public class PlayerData
     {
         public string Name { get; set; }
         public ulong Id { get; set; }
@@ -44,6 +44,7 @@ namespace ALICEIDLE
         public List<int> RollHistory { get; set; }
         public int TotalRolls { get; set; } = 0;
     }
+
     public class FavoriteData
     {
         public int Id;

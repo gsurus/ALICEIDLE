@@ -17,7 +17,7 @@ namespace ALICEIDLE
         public static string basePath { get; set; }
         private DiscordSocketClient _client;
         private InteractionService _commands;
-        public static ulong[] _serverIds = new ulong[] { 631818882901868574, 642655184152952833, 891524758263431188 };
+        public static ulong[] _serverIds = new ulong[] { 631818882901868574, 642655184152952833, 891524758263431188 }; 
         public static Colorful.StyleSheet stySheet { get; set; }
 
         public static Task Main(string[] args) => new Program().MainAsync();
@@ -146,10 +146,11 @@ namespace ALICEIDLE
         private async Task AddCommandsToServers()
         {
             // this is where you put the id of the test discord guild
+            //await _commands.RegisterCommandsToGuildAsync(642655184152952833, true);
             foreach (var id in _serverIds)
             {
                 //cConsole.WriteLineStyled($"In debug mode, adding commands to {id}", stySheet);
-                await _commands.RegisterCommandsToGuildAsync(id);
+                await _commands.RegisterCommandsToGuildAsync(id, true);
             }
         }
     }

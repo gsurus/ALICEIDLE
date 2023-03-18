@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <_LastSelectedProfileId>E:\Visual Studio 2017\Projects\ALICEIDLE\Properties\PublishProfiles\registry.hub.docker.com_gsurus1.pubxml</_LastSelectedProfileId>
+    <_LastSelectedProfileId>E:\Visual Studio 2017\Projects\ALICEIDLE\Properties\PublishProfiles\registry.hub.docker.com_gsurus2.pubxml</_LastSelectedProfileId>
     <ActiveDebugProfile>aliceidle</ActiveDebugProfile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
