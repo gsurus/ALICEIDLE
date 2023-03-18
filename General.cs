@@ -1,4 +1,5 @@
 ﻿using ALICEIDLE.Gelbooru;
+using ALICEIDLE.Logging;
 using ALICEIDLE.Logic;
 using ALICEIDLE.Services;
 using Discord;
@@ -12,12 +13,6 @@ namespace ALICEIDLE
 {
     public class General : InteractionModuleBase<SocketInteractionContext>
     {
-        /*
-        [SlashCommand("__other_test__", "command_description")]
-        public async Task ExampleCommand([Summary("parameter_name"), Autocomplete(typeof(MyAutocompleteHandler))] string parameterWithAutocompletion)
-            => await RespondAsync($"Your choice: {parameterWithAutocompletion}");
-        */
-
         [SlashCommand("roll", "Go out and catch some waifus")]
         public async Task CatchWaifu()
         {
@@ -49,31 +44,35 @@ namespace ALICEIDLE
         [SlashCommand("gelbooru", "Search Gelbooru for an image")]
         public async Task Testing(string tag)
         {
-            Gelbooru.UserData userData = new Gelbooru.UserData()
+            User user = null;
+            UserData userData = new UserData()
             {
-                Users = new List<Gelbooru.User>()
+                Users = new List<User>()
             };
-            Gelbooru.User user = null;
+
             if (EmbedHandler.userData == null)
             {
-                user = new Gelbooru.User()
+                user = new User()
                 {
                     Username = Context.User.Username,
                     Posts = new Gelbooru.Root()
                     {
-                        post = new List<Gelbooru.Post>(),
+                        post = new List<Post>(),
                         attributes = new Attributes()
                     },
                     Page = 0
                 };
+                
                 userData.Users.Add(user);
                 EmbedHandler.userData = userData;
             }
 
             user = EmbedHandler.userData.Users.Find(d => d.Username == Context.User.Username);
             var channel = Context.Client.GetChannel(Context.Channel.Id) as ITextChannel;
+            
             if (!channel.IsNsfw)
                 tag = "rating:general " + tag;
+            
             Gelbooru.Root test = Gelbooru.Gelbooru.SearchPosts(tag).Result;
             user.Posts = test;
 
@@ -85,6 +84,7 @@ namespace ALICEIDLE
         {
             PlayerData playerData = await SqlDBHandler.RetrievePlayerData(Context.User.Id);
             playerData.GenderPreference = preference;
+            
             await SqlDBHandler.UpdatePlayerData(playerData);
 
             if (EmbedHandler.playerDictionary.ContainsKey(playerData.Id))
@@ -124,133 +124,235 @@ namespace ALICEIDLE
             await RespondAsync(embed: emb, ephemeral: true);
 
         }
-        
-        [RequireOwner]
-        [SlashCommand("buildlist", "testing")]
-        public async Task BuildList()
+        [SlashCommand("uwu", "Translate text to UwU")]
+        public async Task Uwu(string message)
         {
-            // AniList API v2 endpoint to query for characters
-            string apiUrl = "https://graphql.anilist.co";
+            int maxDescLength = 2048;
+            message = "Rewrite the following in the style of UwU\\n" + string.Join("", JsonConvert.ToString(message).Skip(1).SkipLast(1));
 
-            // Query string to get characters sorted by number of favorites
-            string query = AnilistQuery.buildListSearchString;
-            Page page = new Page();
-            List<Character> _characters = new List<Character>();
-            DateTime startTime = DateTime.Now;
-            Console.WriteLine("");
-            for (int i = 1; i <= 1000; i++)
+            await RespondAsync(embed: new EmbedBuilder().WithTitle("Translating to UwU...").WithColor(EmbedColors.rColor).Build());
+            
+            var gptResponse = await ChatGPT.GetChatGPTResponse(message, Context.User.Id);
+            await Context.Interaction.DeleteOriginalResponseAsync();
+
+            if (gptResponse.Length > maxDescLength)
             {
-                // Variables to pass to the query
-                var variables = new
-                {
-                    perPage = 50,
-                    page = i
-                };
+                List<EmbedBuilder> embedBuilders = await ChatGPT.SplitResponse(gptResponse, maxDescLength, "uwu");
 
-                // Create a new HttpClient instance
-                using var httpClient = new HttpClient();
-
-                // Create a new HttpRequestMessage with the query and variables
-                var httpRequestMessage = new HttpRequestMessage
-                {
-                    Method = HttpMethod.Post,
-                    RequestUri = new Uri(apiUrl),
-                    Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(new
-                    {
-                        query,
-                        variables
-                    }))
-                };
-                httpRequestMessage.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-
-                // Send the request and deserialize the response JSON into a list of AniListCharacter objects
-                var response = await httpClient.SendAsync(httpRequestMessage);
-                var content = await response.Content.ReadAsStringAsync();
-                Root aniListResponse = JsonConvert.DeserializeObject<Root>(content);
-
-                List<string> charList = new List<string>();
-                foreach (var character in aniListResponse.Data.Page.Characters)
-                {
-                    _characters.Add(character);
-                }
-                
-                Console.Write($"\r{_characters.Count()} characters added in {Calculations.TimeElapsed(startTime)}");
-                if (i % 20 == 0)
-                    Thread.Sleep(5000);
-                else
-                    Thread.Sleep(100);
+                foreach (EmbedBuilder embedBuilder in embedBuilders)
+                    await Context.Interaction.FollowupAsync(embed: embedBuilder.Build());
             }
-            page.Characters = _characters;
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            var jsonString = System.Text.Json.JsonSerializer.Serialize(page, options);
-
-            File.WriteAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\characters.json", jsonString);
-        }
-        
-        [RequireOwner]
-        [SlashCommand("buildwaifulist", "testing")]
-        public async Task BuildWaifuList()
-        {
-            // If the file is not empty, deserialize the contents of a list of PlayerData objects
-            List<Waifu> waifus = new List<Waifu>();
-
-            List<Character> characters = WaifuHandler.characterList;
-            Console.WriteLine(characters.First().Name.Full);
-
-            foreach (var character in characters)
+            else
             {
-                var media = character.Media.nodes.FirstOrDefault();
-                
-                Waifu waifu = new Waifu();
-                waifu.Name = character.Name;
-                waifu.DateOfBirth = new DateOfBirth();
-                waifu.Gender = character.Gender;
-                waifu.Media = character.Media;
-                if (media == null)
-                {
-                    waifu.Series = null;
-                    waifu.SeriesId = null;
-                    waifu.IsAdult = null;
-                }
-                else
-                {
-                    waifu.Series = media.Title.UserPreferred;
-                    waifu.SeriesId = media.Id;
-                    waifu.IsAdult = media.IsAdult;
-                }
-                waifu.Favorites = character.Favourites;
-                waifu.ImageURL = character.Image.Large;
-                waifu.Rarity = WaifuHandler.CalculateRarity(character.Favourites);
-                waifu.XpValue = WaifuHandler.CalculateXPValue(character.Favourites, WaifuHandler.CalculateRarity(character.Favourites));
-                waifu.Id = character.Id;
-                
-                
-                if (character.Gender == null)
-                    character.Gender = "unknown";
-                if (character.DateOfBirth.month != null)
-                    waifu.DateOfBirth.month = character.DateOfBirth.month;   
-                if (character.DateOfBirth.day != null)
-                    waifu.DateOfBirth.day = character.DateOfBirth.day;
-                if (character.Age != null)
-                    waifu.Age = character.Age;
-                waifus.Add(waifu);
+                EmbedBuilder emb = new EmbedBuilder().WithTitle($"UwU Translation")
+                .WithDescription(gptResponse)
+                .WithColor(EmbedColors.successColor);
+
+                await Context.Interaction.FollowupAsync(embed: emb.Build());
             }
             
-            Console.WriteLine(waifus.Count());
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            var jsonString = System.Text.Json.JsonSerializer.Serialize(waifus, options); 
-            File.WriteAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\waifus.json", jsonString);
+        }
+        [SlashCommand("chatgpt", "Ask chatGPT something")]
+        public async Task ChatGPTCommand(string message)
+        {
+            await RespondAsync(embed: new EmbedBuilder().WithTitle("Please wait...").WithColor(EmbedColors.srColor).Build());
+
+            int maxDescLength = 2048;
+            var gptResponse = await ChatGPT.GetChatGPTResponse(message, Context.User.Id);
+            await Context.Interaction.DeleteOriginalResponseAsync();
+            if (gptResponse.Length > maxDescLength)
+            {
+                List<EmbedBuilder> embedBuilders = await ChatGPT.SplitResponse(gptResponse, maxDescLength, "chat");
+
+                foreach (EmbedBuilder embedBuilder in embedBuilders)
+                    await Context.Interaction.FollowupAsync(embed: embedBuilder.Build());
+            }
+            else
+            {
+                Embed emb = new EmbedBuilder()
+                    .WithTitle($"ChatGPT Response")
+                    .WithDescription(gptResponse)
+                    .WithColor(EmbedColors.successColor).Build();
+
+                await Context.Interaction.FollowupAsync(embed: emb);
+            }
+
+        }
+
+        [SlashCommand("audio_transcription", "Create a transcription from an audio file.")]
+        public async Task ChatGPTTranscription(IAttachment audioFile)
+        {
+            await RespondAsync("Please wait...");
+            var response = await ChatGPT.GetWhisperResponse(audioFile, false);
+
+            Embed emb = new EmbedBuilder()
+            .WithTitle($"Transcription")
+            .WithDescription(response)
+            .WithColor(EmbedColors.successColor).Build();
+            
+            await Context.Interaction.DeleteOriginalResponseAsync();
+            await Context.Interaction.FollowupAsync(embed: emb);
+        }
+
+        [SlashCommand("audio_translation", "Create a translation from an audio file.")]
+        public async Task ChatGPTTranslation(IAttachment audioFile)
+        {
+            await RespondAsync("Please wait...");
+            var response = await ChatGPT.GetWhisperResponse(audioFile, true);
+
+            Embed emb = new EmbedBuilder()
+            .WithTitle($"Translation")
+            .WithDescription(response)
+            .WithColor(EmbedColors.successColor).Build();
+            
+            await Context.Interaction.DeleteOriginalResponseAsync();
+            await Context.Interaction.FollowupAsync(embed: emb);
+        }
+
+        [RequireOwner]
+        [SlashCommand("remove", "test")]
+        public async Task Remove()
+        {
+            IEnumerable<IMessage> messages = await Context.Channel.GetMessagesAsync(50).FlattenAsync();
+            List<IMessage> botMessages = new List<IMessage>();
+            
+            foreach (var message in messages)
+            {
+
+                if (message.Author.IsBot)
+                    botMessages.Add(message);
+            }
+            
+            var filteredMessages = botMessages.Where(x => (DateTimeOffset.UtcNow - x.Timestamp).TotalDays <= 14);
+            await ((ITextChannel)Context.Channel).DeleteMessagesAsync(filteredMessages);
         }
         /*
-        [RequireOwner]
-        [SlashCommand("mariadb", "temp")]
-        public async Task MarDB()
-        {
-            PlayerData data = await WaifuHandler.RetrievePlayerDataByID(Context.User.Id, Context.User.Username);
-            await SqlDBHandler.InsertPlayerData(Context.User.Username, Context.User.Id);
-            Console.WriteLine(data.Name);
-        }
-        */
+       [RequireOwner]
+       [SlashCommand("buildlist", "testing")]
+       public async Task BuildList()
+       {
+           // AniList API v2 endpoint to query for characters
+           string apiUrl = "https://graphql.anilist.co";
+
+           // Query string to get characters sorted by number of favorites
+           string query = AnilistQuery.buildListSearchString;
+           Page page = new Page();
+           List<Character> _characters = new List<Character>();
+           DateTime startTime = DateTime.Now;
+           Console.WriteLine("");
+           for (int i = 1; i <= 1000; i++)
+           {
+               // Variables to pass to the query
+               var variables = new
+               {
+                   perPage = 50,
+                   page = i
+               };
+
+               // Create a new HttpClient instance
+               using var httpClient = new HttpClient();
+
+               // Create a new HttpRequestMessage with the query and variables
+               var httpRequestMessage = new HttpRequestMessage
+               {
+                   Method = HttpMethod.Post,
+                   RequestUri = new Uri(apiUrl),
+                   Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(new
+                   {
+                       query,
+                       variables
+                   }))
+               };
+               httpRequestMessage.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+
+               // Send the request and deserialize the response JSON into a list of AniListCharacter objects
+               var response = await httpClient.SendAsync(httpRequestMessage);
+               var content = await response.Content.ReadAsStringAsync();
+               Root aniListResponse = JsonConvert.DeserializeObject<Root>(content);
+
+               List<string> charList = new List<string>();
+               foreach (var character in aniListResponse.Data.Page.Characters)
+               {
+                   _characters.Add(character);
+               }
+
+               Console.Write($"\r{_characters.Count()} characters added in {Calculations.TimeElapsed(startTime)}");
+               if (i % 20 == 0)
+                   Thread.Sleep(5000);
+               else
+                   Thread.Sleep(100);
+           }
+           page.Characters = _characters;
+           var options = new JsonSerializerOptions { WriteIndented = true };
+           var jsonString = System.Text.Json.JsonSerializer.Serialize(page, options);
+
+           File.WriteAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\characters.json", jsonString);
+       }
+
+       [RequireOwner]
+       [SlashCommand("buildwaifulist", "testing")]
+       public async Task BuildWaifuList()
+       {
+           // If the file is not empty, deserialize the contents of a list of PlayerData objects
+           List<Waifu> waifus = new List<Waifu>();
+
+           List<Character> characters = WaifuHandler.characterList;
+           Console.WriteLine(characters.First().Name.Full);
+
+           foreach (var character in characters)
+           {
+               var media = character.Media.nodes.FirstOrDefault();
+
+               Waifu waifu = new Waifu();
+               waifu.Name = character.Name;
+               waifu.DateOfBirth = new DateOfBirth();
+               waifu.Gender = character.Gender;
+               waifu.Media = character.Media;
+               if (media == null)
+               {
+                   waifu.Series = null;
+                   waifu.SeriesId = null;
+                   waifu.IsAdult = null;
+               }
+               else
+               {
+                   waifu.Series = media.Title.UserPreferred;
+                   waifu.SeriesId = media.Id;
+                   waifu.IsAdult = media.IsAdult;
+               }
+               waifu.Favorites = character.Favourites;
+               waifu.ImageURL = character.Image.Large;
+               waifu.Rarity = WaifuHandler.CalculateRarity(character.Favourites);
+               waifu.XpValue = WaifuHandler.CalculateXPValue(character.Favourites, WaifuHandler.CalculateRarity(character.Favourites));
+               waifu.Id = character.Id;
+
+
+               if (character.Gender == null)
+                   character.Gender = "unknown";
+               if (character.DateOfBirth.month != null)
+                   waifu.DateOfBirth.month = character.DateOfBirth.month;   
+               if (character.DateOfBirth.day != null)
+                   waifu.DateOfBirth.day = character.DateOfBirth.day;
+               if (character.Age != null)
+                   waifu.Age = character.Age;
+               waifus.Add(waifu);
+           }
+
+           Console.WriteLine(waifus.Count());
+           var options = new JsonSerializerOptions { WriteIndented = true };
+           var jsonString = System.Text.Json.JsonSerializer.Serialize(waifus, options); 
+           File.WriteAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\waifus.json", jsonString);
+       }
+
+       [RequireOwner]
+       [SlashCommand("mariadb", "temp")]
+       public async Task MarDB()
+       {
+           PlayerData data = await WaifuHandler.RetrievePlayerDataByID(Context.User.Id, Context.User.Username);
+           await SqlDBHandler.InsertPlayerData(Context.User.Username, Context.User.Id);
+           Console.WriteLine(data.Name);
+       }
+      
         [RequireOwner]
         [SlashCommand("mariaupdate", "temp")]
         public async Task MariaUpdate()
@@ -262,73 +364,14 @@ namespace ALICEIDLE
             }
            
         }
-        
-        [SlashCommand("chatgpt", "Ask chatGPT something")]
-        public async Task ChatGPTCommand(string message)
-        {
-            await RespondAsync("Please wait...");
-            var gptResponse = await ChatGPT.GetChatGPTResponse(message, Context.User.Id);
-            string truncatedMsg = message;
-            if (message.Length > 60)
-                truncatedMsg = message.Substring(0, Math.Min(message.Length, 60));
-            Embed emb = new EmbedBuilder()
-                .WithTitle($"{truncatedMsg}")
-                .WithDescription(gptResponse)
-                .WithColor(EmbedColors.successColor).Build();
-            await Context.Interaction.DeleteOriginalResponseAsync();
-            await Context.Interaction.FollowupAsync(embed: emb);
-        }
-        
-        [SlashCommand("audio_transcription", "Create a transcription from an audio file.")]
-        public async Task ChatGPTTranscription(IAttachment audioFile)
-        {
-            await RespondAsync("Please wait...");
-            var response = await ChatGPT.GetWhisperResponse(audioFile, false);
 
-            Embed emb = new EmbedBuilder()
-            .WithTitle($"Transcription")
-            .WithDescription(response)
-            .WithColor(EmbedColors.successColor).Build();
-            await Context.Interaction.DeleteOriginalResponseAsync();
-            await Context.Interaction.FollowupAsync(embed: emb);
-        }
-        
-        [SlashCommand("audio_translation", "Create a translation from an audio file.")]
-        public async Task ChatGPTTranslation(IAttachment audioFile)
-        {
-            await RespondAsync("Please wait...");
-            var response = await ChatGPT.GetWhisperResponse(audioFile, true);
-
-            Embed emb = new EmbedBuilder()
-            .WithTitle($"Translation")
-            .WithDescription(response)
-            .WithColor(EmbedColors.successColor).Build();
-            await Context.Interaction.DeleteOriginalResponseAsync();
-            await Context.Interaction.FollowupAsync(embed: emb);
-        }
-        
+                
         [RequireOwner]
         [SlashCommand("mariainsert", "temp")]
         public async Task MariaInsert(IAttachment audioFile)
         {
             var response = await ChatGPT.GetWhisperResponse(audioFile, true);
             Console.WriteLine(response);
-        }
-        
-        [RequireOwner]
-        [SlashCommand("remove", "test")]
-        public async Task Remove()
-        {
-            IEnumerable<IMessage> messages = await Context.Channel.GetMessagesAsync(50).FlattenAsync();
-            List<IMessage> botMessages = new List<IMessage>();
-            foreach (var message in messages)
-            {
-                
-                if(message.Author.IsBot)
-                    botMessages.Add(message);
-            }
-            var filteredMessages = botMessages.Where(x => (DateTimeOffset.UtcNow - x.Timestamp).TotalDays <= 14);
-            await ((ITextChannel)Context.Channel).DeleteMessagesAsync(filteredMessages);
         }
         
         [RequireOwner]
@@ -340,7 +383,7 @@ namespace ALICEIDLE
 
             List<Waifu> data = JsonConvert.DeserializeObject<List<Waifu>>(File.ReadAllText(@"E:\Visual Studio 2017\Projects\ALICEIDLE\bin\Debug\net7.0\waifus.json"));
             data = data.OrderByDescending(p => p.Favorites).ToList();
-            
+
             var properties = typeof(Waifu).GetProperties();
             var columns = properties.Select(p => new { Name = p.Name, DataType = SqlDBHandler.GetSqlDataType(p.PropertyType) }).ToList();
 
@@ -410,6 +453,7 @@ namespace ALICEIDLE
 
             Console.WriteLine("Done");
         }
+         */
 
         public class CatchWaifusAutoCompleteHandler : AutocompleteHandler
         {

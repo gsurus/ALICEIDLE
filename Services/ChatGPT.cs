@@ -64,13 +64,13 @@ namespace ALICEIDLE.Services
                 ongoingConvo.Add(id, query);
 
             ongoingConvo[id] += $"USER: {query}\\n";
-            Console.WriteLine(ongoingConvo[id]);
+            //Console.WriteLine(JsonConvert.ToString(ongoingConvo[id]));
 
             string response = await QueryChatGPTApi(ongoingConvo[id]);
             ChatGPTRoot chatGPTResponse = JsonConvert.DeserializeObject<ChatGPTRoot>(response);
             ongoingConvo[id] += $"ChatGPT: {chatGPTResponse.choices.First().message.content}\\n";
 
-            Console.WriteLine(ongoingConvo[id]);
+            //Console.WriteLine(ongoingConvo[id]);
             string finalResonse = chatGPTResponse.choices.First().message.content.Replace("ChatGPT: ", "");
 
             return finalResonse;
@@ -91,7 +91,7 @@ namespace ALICEIDLE.Services
                     ""messages"": [{{""role"": ""user"", ""content"": ""{query}""}}]
                     }}", Encoding.UTF8, "application/json")
             };
-
+            Console.WriteLine(query);
             // Send the request and process the response
             var response = await client.SendAsync(request);
             var responseContent = await response.Content.ReadAsStringAsync();
@@ -99,6 +99,7 @@ namespace ALICEIDLE.Services
             Console.WriteLine(responseContent);
             return responseContent;
         }
+        
         public static async Task DownloadFileAsync(string url, string filePath)
         {
             Console.WriteLine("downloading");
@@ -111,6 +112,45 @@ namespace ALICEIDLE.Services
 
             content.Dispose();
             await fileStream.DisposeAsync();
+        }
+        
+        public static async Task<List<EmbedBuilder>> SplitResponse(string gptResponse, int maxDescLength, string type)
+        {
+            
+            int numEmbeds = (int)Math.Ceiling((double)gptResponse.Length / maxDescLength);
+
+            List<EmbedBuilder> embedBuilders = new List<EmbedBuilder>();
+            int currentIndex = 0;
+
+            while (currentIndex < gptResponse.Length)
+            {
+                int length = Math.Min(maxDescLength, gptResponse.Length - currentIndex);
+
+                if (currentIndex + length < gptResponse.Length)
+                {
+                    int lastSpaceIndex = gptResponse.LastIndexOf(' ', currentIndex + length, length);
+                    if (lastSpaceIndex > currentIndex)
+                    {
+                        length = lastSpaceIndex - currentIndex;
+                    }
+                }
+
+                string partialResponse = gptResponse.Substring(currentIndex, length);
+
+                EmbedBuilder emb = new EmbedBuilder()
+                    .WithDescription(partialResponse)
+                    .WithColor(EmbedColors.successColor);
+                
+                if (type == "uwu")
+                    emb.WithTitle($"Uwu Translation ({embedBuilders.Count + 1}/{numEmbeds})");
+                else
+                    emb.WithTitle($"ChatGPT Response ({embedBuilders.Count + 1}/{numEmbeds})");
+                
+                embedBuilders.Add(emb);
+                currentIndex += length;
+            }
+
+            return embedBuilders;
         }
     }
     public class WhisperResponse
