@@ -427,10 +427,11 @@ namespace ALICEIDLE.Services
                         {
                             value = JsonConvert.DeserializeObject<List<int>>(intListString);
                         }
-
+                        Console.WriteLine(value);
                         property.SetValue(playerData, Convert.ChangeType(value, property.PropertyType));
                     }
                 }
+                Console.WriteLine($"{playerData.Name}");
                 playerDataList.Add(playerData);
             }
             playerDataList = playerDataList.OrderByDescending(x => x.Xp).ToList();
@@ -611,6 +612,7 @@ namespace ALICEIDLE.Services
                 case "Id": return row.Id;
                 case "Name": return row.Name;
                 case "GenderPreference": return row.GenderPreference;
+                case "AnimeNamePreference": return row.AnimeNamePreference;
                 case "Level": return row.Level;
                 case "Xp": return row.Xp;
                 case "WaifuAmount": return row.WaifuAmount;
