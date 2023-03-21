@@ -128,11 +128,11 @@ namespace ALICEIDLE
         public async Task Uwu(string message)
         {
             int maxDescLength = 2048;
-            message = "Rewrite the following in the style of UwU\\n" + string.Join("", JsonConvert.ToString(message).Skip(1).SkipLast(1));
+            message = "Rewrite the following in the style of maximum UwU:\\n" + string.Join("", JsonConvert.ToString(message).Skip(1).SkipLast(1));
 
             await RespondAsync(embed: new EmbedBuilder().WithTitle("Translating to UwU...").WithColor(EmbedColors.rColor).Build());
             
-            var gptResponse = await ChatGPT.GetChatGPTResponse(message, Context.User.Id);
+            var gptResponse = await ChatGPT.GetChatGPTResponse(message, Context.User.Id, true);
             await Context.Interaction.DeleteOriginalResponseAsync();
 
             if (gptResponse.Length > maxDescLength)
@@ -158,7 +158,7 @@ namespace ALICEIDLE
             await RespondAsync(embed: new EmbedBuilder().WithTitle("Please wait...").WithColor(EmbedColors.srColor).Build());
 
             int maxDescLength = 2048;
-            var gptResponse = await ChatGPT.GetChatGPTResponse(message, Context.User.Id);
+            var gptResponse = await ChatGPT.GetChatGPTResponse(message, Context.User.Id, false);
             await Context.Interaction.DeleteOriginalResponseAsync();
             if (gptResponse.Length > maxDescLength)
             {

@@ -427,7 +427,7 @@ namespace ALICEIDLE.Services
                         {
                             value = JsonConvert.DeserializeObject<List<int>>(intListString);
                         }
-                        Console.WriteLine(value);
+                        
                         property.SetValue(playerData, Convert.ChangeType(value, property.PropertyType));
                     }
                 }

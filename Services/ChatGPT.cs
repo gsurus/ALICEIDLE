@@ -58,12 +58,14 @@ namespace ALICEIDLE.Services
 
             return wResponse.text;
         }
-        public static async Task<string> GetChatGPTResponse(string query, ulong id)
+        public static async Task<string> GetChatGPTResponse(string query, ulong id, bool noContext)
         {
             if (!ongoingConvo.ContainsKey(id))
                 ongoingConvo.Add(id, query);
-
-            ongoingConvo[id] += $"USER: {query}\\n";
+            if (noContext)
+                ongoingConvo[id] = $"USER: {query}\\n";
+            else
+                ongoingConvo[id] += $"USER: {query}\\n";
             //Console.WriteLine(JsonConvert.ToString(ongoingConvo[id]));
 
             string response = await QueryChatGPTApi(ongoingConvo[id]);
