@@ -64,6 +64,7 @@ namespace ALICEIDLE.Services
             else
             { // Check if the user exists in the database
                 bool playerExists = await SqlDBHandler.PlayerExists(uid);
+
                 if (!playerExists)
                 { // Insert player data into the database and add to player list
                     playerData = await SqlDBHandler.InsertPlayerData(username, uid);
@@ -104,7 +105,7 @@ namespace ALICEIDLE.Services
                 case CmdType.Next:
                 case CmdType.Previous:
                 case CmdType.Remove:
-                    if (playerData.OwnedWaifus.Count == 0)
+                    if (playerData.OwnedWaifus.First().Item1 == -1)
                     {
                         EmbedBuilder emb = new EmbedBuilder()
                             .WithTitle("No Favorites")
@@ -158,6 +159,7 @@ namespace ALICEIDLE.Services
         {
             emBuilder.WithColor(HomeColor)
                      .AddField("Level", WaifuHandler.CalculateLevel(playerData.Xp).ToString("N0"), true)
+                     .AddField("Points", playerData.Points)
                      .AddField("Favorites", playerData.OwnedWaifus.Count().ToString("N0"), true)
                      .AddField("Rolled", playerData.TotalRolls.ToString("N0"), true)
                      .AddField("XP", $"{playerData.Xp.ToString("N0")}/{WaifuHandler.CalculateXPRequired(playerData.Xp).ToString("N0")}", true);
@@ -424,6 +426,7 @@ namespace ALICEIDLE.Services
     {
         public static async Task MyButtonHandler(SocketMessageComponent component)
         {
+            msgComponent = component;
             string id = component.Data.CustomId;
 
             // We can now check for our custom id

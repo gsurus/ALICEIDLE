@@ -6,6 +6,7 @@ namespace ALICEIDLE
 {
     public class Variables
     {
+        public static SocketMessageComponent msgComponent { get; set; }
         public static CmdType GetCommandType(string type)
         {
             if (string.IsNullOrEmpty(type))

@@ -339,9 +339,7 @@ namespace ALICEIDLE.Services
         {
             PlayerData playerData = await RetrievePlayerData(id);
             if (playerData == null)
-            {
                 return false;
-            }
             else
                 return true;
         }
@@ -363,32 +361,29 @@ namespace ALICEIDLE.Services
                 {
                     var columnName = reader.GetName(i);
                     var property = properties.FirstOrDefault(p => p.Name == columnName);
+                    
                     if (property != null)
                     {
                         var value = reader.GetValue(i);
+                        if (columnName == "Points" && value is DBNull)
+                            value = 1;
                         if (value is DBNull)
-                        {
                             value = null;
-                            return null;
-                        }
 
                         if (property.PropertyType == typeof(List<Tuple<int, int>>) && value is string tupleListString)
-                        {
                             value = JsonConvert.DeserializeObject<List<Tuple<int, int>>>(tupleListString);
-                        }
                         else if (property.PropertyType == typeof(List<int>) && value is string intListString)
-                        {
                             value = JsonConvert.DeserializeObject<List<int>>(intListString);
-                        }
-
+                        else if (property.PropertyType == typeof(List<Tuple<string, DateTime>>) && value is string boostListString)
+                            value = JsonConvert.DeserializeObject<List<Tuple<string, DateTime>>>(boostListString);
+                        
                         property.SetValue(playerData, Convert.ChangeType(value, property.PropertyType));
                     }
                 }
-
                 return playerData;
             }
-
-            return null;
+            else
+                return null;
         }
         public static async Task<List<PlayerData>> RetrieveAllPlayerData()
         {
@@ -414,24 +409,18 @@ namespace ALICEIDLE.Services
                     {
                         var value = reader.GetValue(i);
                         if (value is DBNull)
-                        {
                             value = null;
-                            return null;
-                        }
 
                         if (property.PropertyType == typeof(List<Tuple<int, int>>) && value is string tupleListString)
-                        {
                             value = JsonConvert.DeserializeObject<List<Tuple<int, int>>>(tupleListString);
-                        }
                         else if (property.PropertyType == typeof(List<int>) && value is string intListString)
-                        {
                             value = JsonConvert.DeserializeObject<List<int>>(intListString);
-                        }
+                        else if (property.PropertyType == typeof(List<Tuple<string, DateTime>>) && value is string boostListString)
+                            value = JsonConvert.DeserializeObject<List<Tuple<string, DateTime>>>(boostListString);
                         
                         property.SetValue(playerData, Convert.ChangeType(value, property.PropertyType));
                     }
                 }
-                Console.WriteLine($"{playerData.Name}");
                 playerDataList.Add(playerData);
             }
             playerDataList = playerDataList.OrderByDescending(x => x.Xp).ToList();
@@ -445,24 +434,19 @@ namespace ALICEIDLE.Services
             {
                 var value = property.GetValue(row);
                 if (value is List<Tuple<int, int>> tupleList)
-                {
-                    // Convert List<Tuple<int, int>> to JSON string
                     return JsonConvert.SerializeObject(tupleList);
-                }
+                
                 else if (value is List<int> intList)
-                {
-                    // Convert List<int> to JSON string
                     return JsonConvert.SerializeObject(intList);
-                }
+                
+                else if (value is List<Tuple<string, DateTime>> boostList)
+                    return JsonConvert.SerializeObject(boostList);
+                
                 else
-                {
                     return value;
-                }
             }
             else
-            {
                 return null;
-            }
         }
 
         public static bool HasColumn(MySqlDataReader reader, string columnName)

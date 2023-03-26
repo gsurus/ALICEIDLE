@@ -32,44 +32,68 @@ namespace ALICEIDLE.Logic
             
             bool duplicate = false;
             List<int> favoriteIds = FavoritesToIdList(player.OwnedWaifus);
-            Waifu selectedChr = null;
+            Waifu selectedWaifu = null;
 
-            selectedChr = await GetRandomWaifuByTier(rollResult, player);
-            duplicate = await IsDuplicateRoll(selectedChr, player);
+            selectedWaifu = await GetRandomWaifuByTier(rollResult, player);
+            duplicate = await IsDuplicateRoll(selectedWaifu, player);
 
             //Check if the roll is a duplicate of any of our favorites
-            if (await IsDuplicateFavorite(await IdListToWaifuList(favoriteIds), selectedChr))
+            if (await IsDuplicateFavorite(await IdListToWaifuList(favoriteIds), selectedWaifu))
             {
-                var favoritedWaifu = player.OwnedWaifus.Find(d => d.Item1 == selectedChr.Id);
+                var favoritedWaifu = player.OwnedWaifus.Find(d => d.Item1 == selectedWaifu.Id);
                 favoritedWaifu = new Tuple<int, int>(favoritedWaifu.Item1, favoritedWaifu.Item2 + 1);
             }
             else if (duplicate)
             {
                 while (duplicate)
                 {
-                    Console.WriteLine($"Rolled Duplicate: {selectedChr.Name.Full} (id){selectedChr.Id}");
+                    Console.WriteLine($"Rolled Duplicate: {selectedWaifu.Name.Full} (id){selectedWaifu.Id}");
                     rollResult = RollGacha(itemProbabilities, pityRateRolls, pityRateIncrease, player);
-                    selectedChr = await GetRandomWaifuByTier(rollResult, player);
-                    duplicate = await IsDuplicateRoll(selectedChr, player);
+                    selectedWaifu = await GetRandomWaifuByTier(rollResult, player);
+                    duplicate = await IsDuplicateRoll(selectedWaifu, player);
                 }
             }
 
+            await ModifyPlayerData(player, selectedWaifu);
+            
+            return selectedWaifu;
+        }
+        public static async Task<PlayerData> ModifyPlayerData(PlayerData player, Waifu selectedWaifu)
+        {
+            string rarity = CalculateRarity(selectedWaifu.Favorites);
+            int xpValue = CalculateXPValue(selectedWaifu.Favorites, rarity);
+            int playerLevel = CalculateLevel(player.Xp);
+            int waifuPoints = CalculateWaifuPoints(selectedWaifu.Favorites);
+            int levelUpPoints = CalculateLevelUpPoints(playerLevel);
 
-            string rarity = CalculateRarity(selectedChr.Favorites);
-            int xpValue = CalculateXPValue(selectedChr.Favorites, rarity);
+            if (playerLevel > player.Level)
+                if (playerLevel - player.Level > 1)
+                    if(playerLevel - (playerLevel - player.Level) % 5 == 0)
+                    {
+                        player.Points += levelUpPoints;
+                        await Variables.msgComponent.Channel.SendMessageAsync($"Recieved {levelUpPoints} points for reaching level {playerLevel}!");
+                    }    
+                if(playerLevel % 5 == 0)
+                {
+                    player.Points += levelUpPoints;
+                    await Variables.msgComponent.Channel.SendMessageAsync($"Recieved {levelUpPoints} points for reaching level {playerLevel}!");
+                }
+
 
             player.WaifuAmount++;
             player.Xp += xpValue;
+            player.Points += waifuPoints;
             player.Level = CalculateLevel(player.Xp);
-            player.LastCharacterRolled = selectedChr.Id;
+            player.LastCharacterRolled = selectedWaifu.Id;
             if (player.RollHistory.Count >= 100)
                 player.RollHistory.RemoveAt(0);
-            player.RollHistory.Add(selectedChr.Id);
+            player.RollHistory.Add(selectedWaifu.Id);
             player.TotalRolls++;
-            
+
             await UpdatePlayerData(player);
-            return selectedChr;
+            return player;
         }
+        
         public static async Task<bool> IsDuplicateRoll(Waifu character, PlayerData player)
         {
             var waifus = player.OwnedWaifus;
@@ -298,6 +322,7 @@ namespace ALICEIDLE.Logic
 
             storedPlayerData.Xp = playerData.Xp;
             storedPlayerData.Level = playerData.Level;
+            storedPlayerData.Points = playerData.Points;
             storedPlayerData.WaifuAmount = playerData.WaifuAmount;
             storedPlayerData.RollsSinceLastSSR = playerData.RollsSinceLastSSR;
             storedPlayerData.LastCharacterRolled = playerData.LastCharacterRolled;
@@ -387,13 +412,27 @@ namespace ALICEIDLE.Logic
 
             return waifuDataList.OrderBy(p => p.Xp).Reverse().ToList();
         }
+        public static int CalculateWaifuPoints(int favorites)
+        {
+            int value = Convert.ToInt32(favorites * 0.1);
 
+            if (value < 1)
+                value = 1;
+
+            return value;
+        }
+        public static int CalculateLevelUpPoints(int level)
+        {
+            int levelUpPoints = level * 100;
+            return levelUpPoints;
+        }
         public static int CalculateXPValue(int favorites, string rarity)
         {
             int xp = Convert.ToInt32(favorites * 0.5);
 
             if (xp <= 9)
                 xp = 10;
+
             return xp;
         }
         public static int CalculateLevel(int totalXP)

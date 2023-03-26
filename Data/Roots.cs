@@ -27,8 +27,25 @@ namespace ALICEIDLE
         public int? SeriesId { get; set; }
         public bool? IsAdult { get; set; }
     }
+    public class Boost
+    {
+        public string BoostType { get; set; }
+        public TimeSpan BoostDuration { get; set; }
 
-public class PlayerData
+        public Boost(string boostType, TimeSpan boostDuration)
+        {
+            BoostType = boostType;
+            BoostDuration = boostDuration;
+        }
+
+        public bool IsActive()
+        {
+            DateTime boostStartTime = DateTime.Now - BoostDuration;
+            return DateTime.Now < boostStartTime + BoostDuration;
+        }
+    }
+    
+    public class PlayerData
     {
         public string Name { get; set; }
         public ulong Id { get; set; }
@@ -36,6 +53,7 @@ public class PlayerData
         public string AnimeNamePreference { get; set; } = "none";
         public int Level { get; set; } = 1;
         public int Xp { get; set; } = 0;
+        public int Points { get; set; } = 0;
         public double WaifuAmount { get; set; } = 0;
         public int LastCharacterRolled { get; set; }
         public int RollsSinceLastSSR { get; set; } = 0;
@@ -43,6 +61,7 @@ public class PlayerData
         public List<Tuple<int, int>> OwnedWaifus { get; set; }
         public List<int> RollHistory { get; set; }
         public int TotalRolls { get; set; } = 0;
+        public List<Tuple<string, DateTime>> ActiveBoosts { get; set; }
     }
 
     public class FavoriteData
