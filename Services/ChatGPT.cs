@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http.Headers;
 using System.Text;
+using OpenAI_API;
 
 namespace ALICEIDLE.Services
 {
@@ -12,6 +13,7 @@ namespace ALICEIDLE.Services
     {
         public static string tempDir = @$"{AppContext.BaseDirectory}tempfiles\";
         public static Dictionary<ulong, string> ongoingConvo = new Dictionary<ulong, string>();
+        public static Dictionary<ulong, OpenAI_API.Chat.Conversation> userChatDict = new Dictionary<ulong, OpenAI_API.Chat.Conversation>();
         public static async Task<string> GetWhisperResponse(IAttachment file, bool isTranslation)
         {
             string filePath = $"{tempDir}{file.Filename}";
@@ -57,6 +59,25 @@ namespace ALICEIDLE.Services
             }
 
             return wResponse.text;
+        }
+        public static async Task<string> ChatGPTQuery(string systemMessage, string userMessage, ulong id, bool noContext)
+        {
+            OpenAIAPI api = new OpenAIAPI(Program._config["OpenAISecret"]);
+            OpenAI_API.Chat.Conversation chat = null;
+            if (noContext)
+            {
+                chat = api.Chat.CreateConversation();
+                chat.AppendSystemMessage(systemMessage);
+            }
+            else if (!userChatDict.ContainsKey(id))
+                chat = api.Chat.CreateConversation();
+            else
+                chat = userChatDict[id];
+
+            chat.AppendUserInput(userMessage);
+            string response = await chat.GetResponseFromChatbot();
+            
+            return response;
         }
         public static async Task<string> GetChatGPTResponse(string query, ulong id, bool noContext)
         {
@@ -142,12 +163,18 @@ namespace ALICEIDLE.Services
                 EmbedBuilder emb = new EmbedBuilder()
                     .WithDescription(partialResponse)
                     .WithColor(EmbedColors.successColor);
-                
-                if (type == "uwu")
-                    emb.WithTitle($"Uwu Translation ({embedBuilders.Count + 1}/{numEmbeds})");
-                else
-                    emb.WithTitle($"ChatGPT Response ({embedBuilders.Count + 1}/{numEmbeds})");
-                
+
+                switch (type)
+                {
+                    case "uwu":
+                        emb.WithTitle($"Uwu Translation ({embedBuilders.Count + 1}/{numEmbeds})");
+                        break;
+                    case "tsundere":
+                        break;
+                    case "chat":
+                        emb.WithTitle($"ChatGPT Response ({embedBuilders.Count + 1}/{numEmbeds})");
+                        break;
+                }
                 embedBuilders.Add(emb);
                 currentIndex += length;
             }

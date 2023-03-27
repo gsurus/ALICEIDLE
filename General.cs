@@ -124,15 +124,33 @@ namespace ALICEIDLE
             await RespondAsync(embed: emb, ephemeral: true);
 
         }
+        [SlashCommand("tsundere", "Translate text to tsundere.")]
+        public async Task Tsundere(string message)
+        {
+            int maxDescLength = 2048;
+            string sysMessage = "You are an assistant who responds with a tsundere translated version of the users message. Example- User: I don't like you. Assistant: I-it's not like I like you or anything, baka~!";
+            await RespondAsync(embed: new EmbedBuilder().WithTitle("Translating to tsundere...").WithColor(EmbedColors.rColor).Build());
+
+            var gptResponse = await ChatGPT.ChatGPTQuery(sysMessage, message, Context.User.Id, true);
+
+            await Context.Interaction.DeleteOriginalResponseAsync();
+            
+            EmbedBuilder emb = new EmbedBuilder().WithTitle($"Tsundere Translation")
+                .WithDescription(gptResponse)
+                .WithColor(EmbedColors.successColor);
+
+            await Context.Interaction.FollowupAsync(embed: emb.Build());
+        }
+        
         [SlashCommand("uwu", "Translate text to UwU")]
         public async Task Uwu(string message)
         {
             int maxDescLength = 2048;
-            message = "Rewrite the following in the style of maximum UwU:\\n" + string.Join("", JsonConvert.ToString(message).Skip(1).SkipLast(1));
-
+            string sysMessage = "Rewrite the following user prompt in the style of maximum UwU. Respond only with the UwU version of the prompt.";
             await RespondAsync(embed: new EmbedBuilder().WithTitle("Translating to UwU...").WithColor(EmbedColors.rColor).Build());
+
+            var gptResponse = await ChatGPT.ChatGPTQuery(sysMessage, message, Context.User.Id, true);
             
-            var gptResponse = await ChatGPT.GetChatGPTResponse(message, Context.User.Id, true);
             await Context.Interaction.DeleteOriginalResponseAsync();
 
             if (gptResponse.Length > maxDescLength)
