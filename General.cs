@@ -176,8 +176,10 @@ namespace ALICEIDLE
             await RespondAsync(embed: new EmbedBuilder().WithTitle("Please wait...").WithColor(EmbedColors.srColor).Build());
 
             int maxDescLength = 2048;
-            var gptResponse = await ChatGPT.GetChatGPTResponse(message, Context.User.Id, false);
+            var gptResponse = await ChatGPT.ChatGPTQuery("", message, Context.User.Id, true);
+
             await Context.Interaction.DeleteOriginalResponseAsync();
+
             if (gptResponse.Length > maxDescLength)
             {
                 List<EmbedBuilder> embedBuilders = await ChatGPT.SplitResponse(gptResponse, maxDescLength, "chat");

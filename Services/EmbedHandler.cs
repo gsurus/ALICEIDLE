@@ -285,7 +285,7 @@ namespace ALICEIDLE.Services
         {
             string info = "";
             string gender = "";
-            string primaryFieldString = $"{waifu.Rarity} ({waifu.XpValue} XP\n";
+            string primaryFieldString = $"{waifu.Rarity} ({waifu.XpValue} XP)\n";
             var waifuTuple = player.OwnedWaifus.Find(w => w.Item1 == waifu.Id);
             if (waifuTuple != null)
                 primaryFieldString += $"Level: {waifuTuple.Item2}";
